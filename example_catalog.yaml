@@ -1,0 +1,170 @@
+# Example Catalog Definition
+# This file shows how to define your data hierarchy with ownership and source bindings
+
+# Domain: Market Data
+market-data:
+  display_name: Market Data
+  description: Real-time and historical market data
+  ownership:
+    accountable_owner: jane.smith@firm.com
+    data_specialist: market-data-team@firm.com
+    support_channel: "#market-data-support"
+
+market-data/prices:
+  display_name: Security Prices
+  description: Price data from various sources
+
+market-data/prices/equity:
+  display_name: Equity Prices
+  description: Equity security prices
+  source_binding:
+    type: snowflake
+    config:
+      account: your-account.snowflakecomputing.com
+      warehouse: COMPUTE_WH
+      database: MARKET_DATA
+      schema: PRICES
+      table: EQUITY_PRICES
+      query: |
+        SELECT symbol, price, currency, timestamp
+        FROM EQUITY_PRICES
+        WHERE symbol = '{path}'
+
+market-data/prices/equity/bloomberg:
+  display_name: Bloomberg Equity Prices
+  description: Real-time equity prices from Bloomberg
+  ownership:
+    data_specialist: bloomberg-team@firm.com
+  source_binding:
+    type: bloomberg
+    config:
+      api_type: blpapi
+      fields: [PX_LAST, PX_BID, PX_ASK, VOLUME]
+      securities: "{path} Equity"
+
+market-data/prices/fx:
+  display_name: FX Prices
+  description: Foreign exchange rates
+  source_binding:
+    type: rest
+    config:
+      base_url: https://api.exchangerate.example.com
+      path_template: /v1/rates/{path}
+      headers:
+        Accept: application/json
+
+# Domain: Reference Data
+reference:
+  display_name: Reference Data
+  description: Static reference data for securities and entities
+  ownership:
+    accountable_owner: bob.jones@firm.com
+    data_specialist: ref-data-team@firm.com
+    support_channel: "#reference-data"
+
+reference/instruments:
+  display_name: Financial Instruments
+  description: Master instrument data
+
+reference/instruments/equity:
+  display_name: Equity Instruments
+  source_binding:
+    type: oracle
+    config:
+      dsn: refdata.firm.com:1521/REFDATA
+      table: EQUITY_INSTRUMENTS
+      query: |
+        SELECT * FROM EQUITY_INSTRUMENTS
+        WHERE symbol = '{path}'
+
+reference/instruments/fixed-income:
+  display_name: Fixed Income Instruments
+  ownership:
+    data_specialist: fi-data-team@firm.com
+  source_binding:
+    type: snowflake
+    config:
+      database: REFERENCE_DATA
+      schema: INSTRUMENTS
+      table: FIXED_INCOME
+
+reference/calendars:
+  display_name: Trading Calendars
+  description: Exchange trading calendars and holidays
+
+reference/calendars/trading:
+  display_name: Exchange Trading Hours
+  source_binding:
+    type: static
+    config:
+      base_path: /data/calendars
+      file_pattern: "{path}.json"
+
+# Domain: Risk
+risk:
+  display_name: Risk Data
+  description: Risk analytics and positions
+  ownership:
+    accountable_owner: sarah.chen@firm.com
+    data_specialist: risk-tech@firm.com
+    support_channel: "#risk-support"
+  classification: confidential
+
+risk/positions:
+  display_name: Risk Positions
+  source_binding:
+    type: snowflake
+    config:
+      database: RISK
+      schema: POSITIONS
+      table: DAILY_POSITIONS
+
+risk/var:
+  display_name: Value at Risk
+  description: VaR calculations by desk
+  ownership:
+    data_specialist: quant-team@firm.com
+  source_binding:
+    type: rest
+    config:
+      base_url: https://risk-engine.internal.firm.com
+      path_template: /api/v2/var/{path}
+      auth_type: bearer
+      auth_config:
+        token: ${RISK_API_TOKEN}
+
+# Domain: Client Data
+client-data:
+  display_name: Client Data
+  description: Client and account information
+  ownership:
+    accountable_owner: mike.wilson@firm.com
+    data_specialist: client-ops@firm.com
+    support_channel: "#client-data"
+  classification: restricted
+
+client-data/accounts:
+  display_name: Client Accounts
+  source_binding:
+    type: oracle
+    config:
+      dsn: clientdb.firm.com:1521/CLIENTS
+      table: ACCOUNTS
+
+# Domain: Reports (Excel-based)
+reports:
+  display_name: Reports
+  description: Business reports and analytics
+  ownership:
+    accountable_owner: finance-head@firm.com
+    data_specialist: reporting-team@firm.com
+    support_channel: "#reporting"
+
+reports/daily:
+  display_name: Daily Reports
+  source_binding:
+    type: excel
+    config:
+      base_path: //fileserver/reports/daily
+      file_pattern: "{path}.xlsx"
+      sheet: Data

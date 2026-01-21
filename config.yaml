@@ -1,0 +1,46 @@
+# Moniker Service Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false
+
+telemetry:
+  enabled: true
+
+  # Sink type: console | file | zmq
+  sink_type: console
+
+  # Sink-specific configuration
+  sink_config:
+    # For console sink:
+    format: compact  # json | compact | pretty
+
+    # For file sink (uncomment):
+    # path_pattern: "telemetry-%Y%m%d.jsonl"
+    # directory: "./logs/telemetry"
+    # max_bytes: 104857600  # 100MB
+
+    # For ZMQ sink (uncomment):
+    # endpoint: "tcp://*:5555"
+    # topic: "moniker.usage"
+
+  # Batching configuration
+  batch_size: 1000
+  flush_interval_seconds: 1.0
+
+  # Queue configuration
+  max_queue_size: 10000
+
+cache:
+  enabled: true
+  max_size: 10000
+  default_ttl_seconds: 300  # 5 minutes
+
+catalog:
+  # Path to catalog definition file
+  definition_file: "./example_catalog.yaml"
+
+  # Hot reload interval (0 = disabled)
+  reload_interval_seconds: 60
