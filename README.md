@@ -57,8 +57,12 @@ The Moniker Service is a **resolution service**, not a data proxy. This prevents
 # Install the service
 pip install -e .
 
+# Copy sample config files (customize as needed)
+cp config.sample.yaml config.yaml
+cp sample_catalog.yaml catalog.yaml
+
 # Run
-python -m moniker_svc.main
+python -m moniker_svc.main --config config.yaml
 ```
 
 Service runs at http://localhost:8000
@@ -370,29 +374,37 @@ For production, pipe telemetry to Kafka, Splunk, or your data warehouse by modif
 
 ## Catalog Definition
 
-Define your catalog in `example_catalog.yaml`:
+Copy `sample_catalog.yaml` to `catalog.yaml` and customize:
+
+```bash
+cp sample_catalog.yaml catalog.yaml
+```
+
+Example catalog entry with new moniker format:
 
 ```yaml
-market-data:
-  display_name: Market Data
-  ownership:
-    accountable_owner: jane.smith@firm.com
-    data_specialist: market-data-team@firm.com
-    support_channel: "#market-data-support"
-
-market-data/prices/equity:
+# Domain with dot notation
+prices.equity:
   display_name: Equity Prices
+  ownership:
+    accountable_owner: market-data-governance@firm.com
+    data_specialist: market-data-ops@firm.com
+    support_channel: "#market-data"
   source_binding:
     type: snowflake
     config:
-      account: acme.us-east-1
-      warehouse: COMPUTE_WH
-      database: MARKET_DATA
-      schema: PRICES
+      account: firm-prod.us-east-1
+      warehouse: MARKET_DATA_WH
+      database: PRICES
+      schema: EQUITY
       query: |
-        SELECT symbol, price, currency, timestamp
-        FROM EQUITY_PRICES
-        WHERE symbol = '{path}'
+        SELECT symbol, close_price, volume
+        FROM EQUITY_EOD
+        WHERE {filter[0]:symbol}
+          AND trade_date = CASE
+            WHEN {is_latest} = 'true' THEN (SELECT MAX(trade_date) FROM EQUITY_EOD)
+            ELSE {version_date}
+          END
 ```
 
 ## Project Structure
@@ -426,10 +438,11 @@ open-moniker-svc/
 │       ├── bloomberg.py
 │       └── ...
 │
+├── examples/                  # Usage examples for notebooks
 ├── tests/                     # Unit tests
 ├── demo.py                    # Interactive demo
-├── config.yaml                # Service configuration
-├── example_catalog.yaml       # Sample catalog
+├── config.sample.yaml         # Service configuration template
+├── sample_catalog.yaml        # Sample catalog definition
 └── pyproject.toml             # Package configuration
 ```
 

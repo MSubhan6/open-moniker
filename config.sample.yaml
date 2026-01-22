@@ -39,8 +39,8 @@ cache:
   default_ttl_seconds: 300  # 5 minutes
 
 catalog:
-  # Path to catalog definition file
-  definition_file: "./example_catalog.yaml"
+  # Path to catalog definition file (copy sample_catalog.yaml to catalog.yaml)
+  definition_file: "./catalog.yaml"
 
   # Hot reload interval (0 = disabled)
   reload_interval_seconds: 60

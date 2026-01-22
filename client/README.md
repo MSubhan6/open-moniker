@@ -19,11 +19,17 @@ pip install moniker-client[all]
 from moniker_client import read, describe
 
 # Read data using a moniker
-data = read("market-data/prices/equity/AAPL")
+data = read("prices.equity/AAPL")
 print(data)
 
+# Read with version (point-in-time)
+historical = read("prices.equity/AAPL@20260115")
+
+# Read all data (matrix instead of vector)
+all_prices = read("prices.equity/ALL@latest")
+
 # Get ownership info
-info = describe("market-data/prices/equity")
+info = describe("prices.equity")
 print(f"Owner: {info['ownership']['accountable_owner']}")
 print(f"Support: {info['ownership']['support_channel']}")
 ```
@@ -55,12 +61,12 @@ from moniker_client import MonikerClient, ClientConfig
 
 config = ClientConfig(
     service_url="http://moniker-svc:8000",
-    app_id="my-app",
-    team="my-team",
+    app_id="my-notebook",
+    team="quant-research",
 )
 
 client = MonikerClient(config=config)
-data = client.read("market-data/prices/equity/AAPL")
+data = client.read("prices.equity/AAPL@20260115")
 ```
 
 ## How It Works
@@ -106,7 +112,20 @@ data = client.read("market-data/prices/equity/AAPL")
 Fetch data for a moniker.
 
 ```python
-data = read("market-data/prices/equity/AAPL")
+# Simple read (today's date)
+data = read("prices.equity/AAPL")
+
+# With version (point-in-time)
+data = read("prices.equity/AAPL@20260115")
+
+# Latest available data
+data = read("prices.equity/AAPL@latest")
+
+# All items (returns matrix)
+all_data = read("prices.equity/ALL@20260115")
+
+# With namespace (user-scoped data)
+my_view = read("user@analytics.risk/views/my-watchlist@latest/v3")
 ```
 
 ### describe(moniker)
@@ -114,7 +133,7 @@ data = read("market-data/prices/equity/AAPL")
 Get metadata about a path.
 
 ```python
-info = describe("market-data/prices/equity")
+info = describe("prices.equity")
 # Returns: display_name, ownership, source_type, classification, etc.
 ```
 
@@ -123,7 +142,7 @@ info = describe("market-data/prices/equity")
 List children of a path.
 
 ```python
-children = list_children("market-data/prices")
+children = list_children("prices")
 # Returns: ["equity", "fx", "fixed-income"]
 ```
 
@@ -132,7 +151,7 @@ children = list_children("market-data/prices")
 Get full ownership lineage.
 
 ```python
-lineage_info = lineage("market-data/prices/equity/AAPL")
+lineage_info = lineage("prices.equity/AAPL")
 # Returns: ownership at each level, source binding location
 ```
 

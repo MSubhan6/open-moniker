@@ -52,6 +52,11 @@ telemetry/
 .env
 .env.local
 
+# Local config files (copy from *.sample.yaml)
+config.yaml
+config_zmq.yaml
+catalog.yaml
+
 # OS
 .DS_Store
 Thumbs.db
