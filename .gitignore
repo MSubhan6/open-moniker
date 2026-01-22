@@ -44,8 +44,8 @@ htmlcov/
 *.log
 logs/
 
-# Telemetry output
-telemetry/
+# Telemetry output (root level only, not src/moniker_svc/telemetry/)
+/telemetry/
 *.jsonl
 
 # Environment
