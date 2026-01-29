@@ -301,6 +301,53 @@ analytics.risk/views:
 
 
 # =============================================================================
+# RISK - CVaR and tail risk measures (Oracle)
+# =============================================================================
+
+risk:
+  display_name: Risk Measures
+  description: Tail risk, CVaR, and stress testing metrics from Proteus
+  ownership:
+    accountable_owner: risk-governance@firm.com
+    data_specialist: risk-quant@firm.com
+    support_channel: "#risk-analytics"
+  classification: confidential
+
+# Example monikers:
+#   risk.cvar/758-A/USD/ALL         - All securities for portfolio 758-A in USD
+#   risk.cvar/758-A/ALL/ALL         - All currencies, all securities for portfolio
+#   risk.cvar/ALL/USD/B0YHY8V7      - Specific security across all USD portfolios
+#   risk.cvar/ALL/ALL/ALL           - Everything (use with caution!)
+#
+# Path structure: risk.cvar/{portfolio}/{currency}/{security}
+#   - portfolio: PORT_NO-PORT_TYPE combined (e.g., "758-A")
+#   - currency: BASE_CURRENCY (e.g., "USD") or "ALL"
+#   - security: SSM_ID (e.g., "B0YHY8V7") or "ALL"
+#
+# Returns full timeseries history (ASOF_DATE is a result column, not a filter)
+
+risk.cvar:
+  display_name: Conditional Value at Risk
+  description: CVaR tail risk measures by portfolio, currency, and security
+  ownership:
+    accountable_owner: risk-governance@firm.com
+    data_specialist: risk-quant@firm.com
+    support_channel: "#risk-analytics"
+  source_binding:
+    type: oracle
+    config:
+      dsn: proteus.firm.com:1521/RISKDB
+      query: |
+        SELECT asof_date, port_no, port_type, ssm_id, base_currency,
+               acct_key, lt_id, lt_id_2, cvar_coeff, cvar
+        FROM proteus_2_own.te_stress_tail_risk_pnl
+        WHERE ('{segments[0]}' = 'ALL' OR port_no || '-' || port_type = '{segments[0]}')
+          AND ('{segments[1]}' = 'ALL' OR base_currency = '{segments[1]}')
+          AND ('{segments[2]}' = 'ALL' OR ssm_id = '{segments[2]}')
+        ORDER BY asof_date DESC, port_no, ssm_id
+
+
+# =============================================================================
 # HOLDINGS - Portfolio positions and exposures
 # =============================================================================
 
