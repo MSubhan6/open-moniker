@@ -101,6 +101,123 @@ class SourceBinding:
     read_only: bool = True
 
 
+@dataclass(frozen=True, slots=True)
+class AccessPolicy:
+    """
+    Access policy for controlling query patterns and preventing expensive operations.
+
+    This is the guardrail layer that prevents users from accidentally running
+    queries that would return billions of rows or overload data sources.
+    """
+    # Segments that MUST be specified (cannot be ALL)
+    # e.g., ["portfolio"] means you must filter by portfolio
+    required_segments: tuple[int, ...] = ()
+
+    # Minimum number of segments that must NOT be ALL
+    # e.g., min_filters=2 means at least 2 of the path segments must be specific values
+    min_filters: int = 0
+
+    # Patterns that are explicitly blocked (regex on full path)
+    # e.g., ["ALL/ALL/ALL"] blocks the full wildcard query
+    blocked_patterns: tuple[str, ...] = ()
+
+    # Maximum estimated rows (warn if exceeded, block if way over)
+    # This uses cardinality hints to estimate result size
+    max_rows_warn: int | None = None      # Warn but allow
+    max_rows_block: int | None = None     # Block entirely
+
+    # Cardinality multipliers for each segment position when ALL is used
+    # e.g., (1000, 50, 10000) means segment 0=ALL adds 1000x, segment 1=ALL adds 50x, etc.
+    cardinality_multipliers: tuple[int, ...] = ()
+
+    # Base row count for a fully-filtered query (single specific value per segment)
+    base_row_count: int = 100
+
+    # Require explicit confirmation for large queries
+    require_confirmation_above: int | None = None
+
+    # Custom error message when access is denied
+    denial_message: str | None = None
+
+    # Allowed roles/groups (if specified, only these can access)
+    allowed_roles: tuple[str, ...] = ()
+
+    # Time-based restrictions (e.g., only during business hours)
+    allowed_hours: tuple[int, int] | None = None  # (start_hour, end_hour) in UTC
+
+    def estimate_rows(self, segments: list[str]) -> int:
+        """
+        Estimate the number of rows that would be returned based on segment values.
+
+        Args:
+            segments: List of segment values from the moniker path
+
+        Returns:
+            Estimated row count
+        """
+        multiplier = 1
+        for i, seg in enumerate(segments):
+            if seg.upper() == "ALL":
+                if i < len(self.cardinality_multipliers):
+                    multiplier *= self.cardinality_multipliers[i]
+                else:
+                    multiplier *= 100  # Default multiplier for unknown segments
+
+        return self.base_row_count * multiplier
+
+    def validate(self, segments: list[str]) -> tuple[bool, str | None, int | None]:
+        """
+        Validate if a query pattern is allowed.
+
+        Args:
+            segments: List of segment values from the moniker path
+
+        Returns:
+            Tuple of (is_allowed, error_message, estimated_rows)
+        """
+        import re
+
+        path = "/".join(segments)
+        estimated_rows = self.estimate_rows(segments)
+
+        # Check blocked patterns
+        for pattern in self.blocked_patterns:
+            if re.match(pattern, path, re.IGNORECASE):
+                msg = self.denial_message or f"Query pattern '{path}' is blocked by access policy"
+                return (False, msg, estimated_rows)
+
+        # Check required segments
+        for idx in self.required_segments:
+            if idx < len(segments) and segments[idx].upper() == "ALL":
+                segment_name = f"segment {idx}"
+                msg = f"Access policy requires {segment_name} to be specified (cannot use ALL)"
+                return (False, msg, estimated_rows)
+
+        # Check minimum filters
+        if self.min_filters > 0:
+            non_all_count = sum(1 for s in segments if s.upper() != "ALL")
+            if non_all_count < self.min_filters:
+                msg = f"Access policy requires at least {self.min_filters} specific filters, but only {non_all_count} provided"
+                return (False, msg, estimated_rows)
+
+        # Check row limits
+        if self.max_rows_block and estimated_rows > self.max_rows_block:
+            msg = (
+                f"Query would return ~{estimated_rows:,} rows, exceeding limit of {self.max_rows_block:,}. "
+                f"Add more specific filters to reduce result size."
+            )
+            if self.denial_message:
+                msg = self.denial_message
+            return (False, msg, estimated_rows)
+
+        # Warning for large queries (but allowed)
+        warning = None
+        if self.max_rows_warn and estimated_rows > self.max_rows_warn:
+            warning = f"Large query: estimated {estimated_rows:,} rows"
+
+        return (True, warning, estimated_rows)
+
+
 @dataclass(slots=True)
 class CatalogNode:
     """
@@ -133,6 +250,9 @@ class CatalogNode:
 
     # Machine-readable schema for AI agent discoverability
     data_schema: DataSchema | None = None
+
+    # Access policy for query guardrails
+    access_policy: AccessPolicy | None = None
 
     # Data classification (for governance)
     classification: str = "internal"

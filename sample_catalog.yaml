@@ -495,6 +495,33 @@ risk.cvar:
       - "reference.security/SSM - Security master for SSM_ID lookups"
       - "analytics.risk/var - Value at Risk (related metric)"
 
+  # Access policy - guardrails against expensive queries (9.5B rows!)
+  access_policy:
+    # Block the full wildcard query - would return 9.5 billion rows
+    blocked_patterns:
+      - "ALL/ALL/ALL"
+
+    # Require at least 1 specific filter (portfolio, currency, or security)
+    min_filters: 1
+
+    # Cardinality estimates: ~1000 portfolios, ~50 currencies, ~200K securities
+    # Base is ~1000 rows for a single portfolio/currency/security combo over time
+    cardinality_multipliers:
+      - 1000    # segment 0: portfolio (ALL = 1000 portfolios)
+      - 50      # segment 1: currency (ALL = 50 currencies)
+      - 200000  # segment 2: security (ALL = 200K securities)
+    base_row_count: 1000
+
+    # Warn above 10M rows, block above 100M rows
+    max_rows_warn: 10000000
+    max_rows_block: 100000000
+
+    # Custom message for blocked queries
+    denial_message: |
+      Query blocked: CVaR table contains 9.5 billion rows.
+      You must specify at least one filter (portfolio, currency, or security).
+      Example: risk.cvar/758-A/USD/ALL (specific portfolio and currency)
+
   source_binding:
     type: oracle
     config:

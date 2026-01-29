@@ -40,6 +40,14 @@ class NotFoundError(ResolutionError):
     pass
 
 
+class AccessDeniedError(ResolutionError):
+    """Raised when access policy blocks the query."""
+
+    def __init__(self, message: str, estimated_rows: int | None = None):
+        super().__init__(message)
+        self.estimated_rows = estimated_rows
+
+
 @dataclass(frozen=True)
 class ResolvedSource:
     """
@@ -175,6 +183,19 @@ class MonikerService:
                 if binding_path != path_str and path_str.startswith(binding_path):
                     sub_path = path_str[len(binding_path):].lstrip("/")
 
+                # Check access policy
+                binding_node = self.catalog.get(binding_path)
+                if binding_node and binding_node.access_policy:
+                    segments = sub_path.split("/") if sub_path else []
+                    is_allowed, error_or_warning, estimated_rows = binding_node.access_policy.validate(segments)
+
+                    if not is_allowed:
+                        raise AccessDeniedError(error_or_warning or "Access denied by policy", estimated_rows)
+
+                    # Log warning if present
+                    if error_or_warning:
+                        logger.warning(f"Access policy warning for {path_str}: {error_or_warning}")
+
                 # Build resolved source
                 resolved_source = self._build_resolved_source(binding, moniker, sub_path)
 
@@ -207,6 +228,11 @@ class MonikerService:
         except NotFoundError as e:
             outcome = EventOutcome.NOT_FOUND
             error_message = str(e)
+            raise
+        except AccessDeniedError as e:
+            outcome = EventOutcome.ERROR
+            error_message = str(e)
+            logger.warning(f"Access denied for {moniker_str}: {e}")
             raise
         except Exception as e:
             outcome = EventOutcome.ERROR

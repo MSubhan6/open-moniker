@@ -23,7 +23,7 @@ from .catalog.types import CatalogNode, Ownership, SourceBinding, SourceType
 from .config import Config
 from .identity.extractor import extract_identity
 from .moniker.parser import MonikerParseError
-from .service import MonikerService, NotFoundError, ResolutionError
+from .service import MonikerService, AccessDeniedError, NotFoundError, ResolutionError
 from .telemetry.batcher import TelemetryBatcher, create_batched_consumer
 from .telemetry.emitter import TelemetryEmitter
 from .telemetry.events import CallerIdentity, EventOutcome
@@ -587,6 +587,19 @@ async def not_found_error_handler(request: Request, exc: NotFoundError):
     return JSONResponse(
         status_code=404,
         content={"error": "Not found", "detail": str(exc)},
+    )
+
+
+@app.exception_handler(AccessDeniedError)
+async def access_denied_error_handler(request: Request, exc: AccessDeniedError):
+    """Handle access policy violations - returns 403 Forbidden."""
+    return JSONResponse(
+        status_code=403,
+        content={
+            "error": "Access denied",
+            "detail": str(exc),
+            "estimated_rows": exc.estimated_rows,
+        },
     )
 
 

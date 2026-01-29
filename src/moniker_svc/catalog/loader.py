@@ -10,8 +10,8 @@ import yaml
 
 from .registry import CatalogRegistry
 from .types import (
-    CatalogNode, ColumnSchema, DataQuality, DataSchema, Freshness,
-    Ownership, SLA, SourceBinding, SourceType,
+    AccessPolicy, CatalogNode, ColumnSchema, DataQuality, DataSchema,
+    Freshness, Ownership, SLA, SourceBinding, SourceType,
 )
 
 
@@ -172,6 +172,23 @@ class CatalogLoader:
                 update_frequency=schema_data.get("update_frequency"),
             )
 
+        # Parse access policy (query guardrails)
+        access_policy = None
+        if "access_policy" in data:
+            ap_data = data["access_policy"]
+            access_policy = AccessPolicy(
+                required_segments=tuple(ap_data.get("required_segments", [])),
+                min_filters=ap_data.get("min_filters", 0),
+                blocked_patterns=tuple(ap_data.get("blocked_patterns", [])),
+                max_rows_warn=ap_data.get("max_rows_warn"),
+                max_rows_block=ap_data.get("max_rows_block"),
+                cardinality_multipliers=tuple(ap_data.get("cardinality_multipliers", [])),
+                base_row_count=ap_data.get("base_row_count", 100),
+                require_confirmation_above=ap_data.get("require_confirmation_above"),
+                denial_message=ap_data.get("denial_message"),
+                allowed_roles=tuple(ap_data.get("allowed_roles", [])),
+            )
+
         return CatalogNode(
             path=path,
             display_name=data.get("display_name", ""),
@@ -182,6 +199,7 @@ class CatalogLoader:
             sla=sla,
             freshness=freshness,
             data_schema=data_schema,
+            access_policy=access_policy,
             classification=data.get("classification", "internal"),
             tags=tags,
             metadata=data.get("metadata", {}),
