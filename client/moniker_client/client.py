@@ -101,6 +101,126 @@ class ResolvedSource:
     sub_path: str | None
 
 
+class Moniker:
+    """
+    Fluent API for working with a moniker path.
+
+    Usage:
+        m = Moniker("risk.cvar/DESK_A/20240115/ALL")
+
+        # Get metadata
+        meta = m.metadata()
+        print(meta.semantic_tags)
+
+        # Fetch data (server-side execution)
+        result = m.fetch(limit=100)
+        print(result.data)
+
+        # Quick sample
+        preview = m.sample(5)
+
+        # Read data (client-side execution)
+        data = m.read()
+
+        # Describe ownership
+        info = m.describe()
+
+        # Navigate to child
+        child = m / "subpath"
+        # or
+        child = m.child("subpath")
+    """
+
+    def __init__(
+        self,
+        path: str,
+        client: "MonikerClient | None" = None,
+    ):
+        """
+        Create a Moniker object.
+
+        Args:
+            path: Moniker path (with or without scheme)
+            client: Optional MonikerClient (uses default if not provided)
+        """
+        # Normalize path - strip scheme if present
+        if path.startswith("moniker://"):
+            path = path[len("moniker://"):]
+        self._path = path.strip("/")
+        self._client = client
+
+    @property
+    def path(self) -> str:
+        """The moniker path."""
+        return self._path
+
+    @property
+    def uri(self) -> str:
+        """Full moniker URI with scheme."""
+        return f"moniker://{self._path}"
+
+    @property
+    def client(self) -> "MonikerClient":
+        """Get the client (default if not set)."""
+        if self._client is None:
+            self._client = _get_client()
+        return self._client
+
+    def __str__(self) -> str:
+        return self.uri
+
+    def __repr__(self) -> str:
+        return f"Moniker({self._path!r})"
+
+    def __truediv__(self, other: str) -> "Moniker":
+        """Navigate to child path using / operator."""
+        return self.child(other)
+
+    def child(self, subpath: str) -> "Moniker":
+        """Navigate to a child path."""
+        new_path = f"{self._path}/{subpath.strip('/')}"
+        return Moniker(new_path, client=self._client)
+
+    def parent(self) -> "Moniker | None":
+        """Get parent moniker, or None if at root."""
+        if "/" not in self._path:
+            return None
+        parent_path = "/".join(self._path.split("/")[:-1])
+        return Moniker(parent_path, client=self._client)
+
+    def read(self, **kwargs) -> Any:
+        """Read data (client-side execution via adapter)."""
+        return self.client.read(self._path, **kwargs)
+
+    def fetch(self, limit: int | None = None, **params) -> FetchResult:
+        """Fetch data (server-side execution)."""
+        return self.client.fetch(self._path, limit=limit, **params)
+
+    def metadata(self) -> MetadataResult:
+        """Get rich AI-discoverable metadata."""
+        return self.client.metadata(self._path)
+
+    def sample(self, limit: int = 5) -> SampleResult:
+        """Get a quick sample of data."""
+        return self.client.sample(self._path, limit=limit)
+
+    def describe(self) -> dict[str, Any]:
+        """Get ownership and catalog metadata."""
+        return self.client.describe(self._path)
+
+    def resolve(self) -> ResolvedSource:
+        """Resolve to source connection info."""
+        return self.client.resolve(self._path)
+
+    def lineage(self) -> dict[str, Any]:
+        """Get ownership lineage."""
+        return self.client.lineage(self._path)
+
+    def children(self) -> list[str]:
+        """List child paths."""
+        return self.client.list_children(self._path)
+
+
 @dataclass
 class MonikerClient:
     """
