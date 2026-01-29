@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Interest Rate Swaps",
+  "description": "Schema for par swap rates across currencies and tenors",
+  "type": "object",
+  "required": ["ASOF_DATE", "CURRENCY", "TENOR", "PAR_RATE"],
+  "properties": {
+    "ASOF_DATE": {
+      "type": "string",
+      "format": "date",
+      "description": "Rate observation date"
+    },
+    "CURRENCY": {
+      "type": "string",
+      "description": "Currency (ISO 4217)",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "TENOR": {
+      "type": "string",
+      "description": "Swap tenor",
+      "enum": ["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"]
+    },
+    "PAR_RATE": {
+      "type": "number",
+      "description": "Par swap rate (decimal)",
+      "minimum": -0.05,
+      "maximum": 0.3
+    },
+    "SPREAD_VS_GOVT": {
+      "type": ["number", "null"],
+      "description": "Spread versus government bond (bps)"
+    },
+    "DV01": {
+      "type": ["number", "null"],
+      "description": "Dollar value of 1bp move per $1M notional"
+    }
+  }
+}

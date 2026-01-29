@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Energy Commodities",
+  "description": "Schema for energy commodity prices from NEFA API",
+  "type": "object",
+  "required": ["TIMESTAMP", "SYMBOL", "CONTRACT", "PRICE"],
+  "properties": {
+    "TIMESTAMP": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Price timestamp (UTC)"
+    },
+    "SYMBOL": {
+      "type": "string",
+      "description": "Commodity symbol",
+      "enum": ["CL", "BZ", "NG", "HO", "RB"]
+    },
+    "CONTRACT": {
+      "type": "string",
+      "description": "Contract type",
+      "pattern": "^(SPOT|F[1-9][0-9]?)$"
+    },
+    "NAME": {
+      "type": "string",
+      "description": "Commodity name"
+    },
+    "UNIT": {
+      "type": "string",
+      "description": "Price unit (barrel, MMBtu, gallon)"
+    },
+    "PRICE": {
+      "type": "number",
+      "description": "Price per unit (USD)",
+      "minimum": 0
+    },
+    "CHANGE": {
+      "type": ["number", "null"],
+      "description": "Price change from prior close"
+    },
+    "CHANGE_PCT": {
+      "type": ["number", "null"],
+      "description": "Percentage change from prior close"
+    },
+    "VOLUME": {
+      "type": ["integer", "null"],
+      "description": "Trading volume (contracts)",
+      "minimum": 0
+    },
+    "OPEN_INTEREST": {
+      "type": ["integer", "null"],
+      "description": "Open interest (contracts)",
+      "minimum": 0
+    }
+  }
+}

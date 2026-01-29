@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CVaR Risk Data",
+  "description": "Schema for CVaR tail risk data from Proteus Oracle database",
+  "type": "object",
+  "required": ["ASOF_DATE", "PORT_NO", "PORT_TYPE", "SSM_ID", "BASE_CURRENCY", "CVAR"],
+  "properties": {
+    "ASOF_DATE": {
+      "type": "string",
+      "format": "date",
+      "description": "Business date for the risk calculation"
+    },
+    "PORT_NO": {
+      "type": "string",
+      "description": "Portfolio number identifier",
+      "pattern": "^[0-9]+$"
+    },
+    "PORT_TYPE": {
+      "type": "string",
+      "description": "Portfolio type (A=Active, B=Benchmark)",
+      "enum": ["A", "B"]
+    },
+    "SSM_ID": {
+      "type": "string",
+      "description": "Security master identifier",
+      "pattern": "^[A-Z0-9]+$"
+    },
+    "BASE_CURRENCY": {
+      "type": "string",
+      "description": "ISO 4217 currency code",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "ACCT_KEY": {
+      "type": ["string", "null"],
+      "description": "Account key for position attribution"
+    },
+    "LT_ID": {
+      "type": ["integer", "null"],
+      "description": "Liquidity tier ID (0=liquid, 24=illiquid)"
+    },
+    "LT_ID_2": {
+      "type": ["integer", "null"],
+      "description": "Secondary liquidity tier"
+    },
+    "CVAR_COEFF": {
+      "type": "number",
+      "description": "CVaR coefficient - sensitivity factor"
+    },
+    "CVAR": {
+      "type": "number",
+      "description": "Conditional Value at Risk (decimal)",
+      "minimum": -1,
+      "maximum": 1
+    }
+  }
+}
