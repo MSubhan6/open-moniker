@@ -642,3 +642,963 @@ prices.fixed-income:
         SELECT security_id, bid_price, ask_price, mid_price, yield_to_maturity, spread
         FROM BOND_PRICES
         WHERE security_id = '{segments[0]}'
+
+
+# =============================================================================
+# GOVIES - Government Bond Data (Snowflake)
+# =============================================================================
+
+govies:
+  display_name: Government Bonds
+  description: Sovereign debt securities, yields, and analytics
+  ownership:
+    accountable_owner: fixed-income-governance@firm.com
+    data_specialist: govies-desk@firm.com
+    support_channel: "#govies-data"
+    adop: fi-trading-head@firm.com
+    ads: govies-data-steward@firm.com
+    adal: fi-access-control@firm.com
+  classification: internal
+
+# Example monikers:
+#   govies.treasury/US/10Y/ALL      - All 10Y US Treasury data
+#   govies.treasury/ALL/ALL/ALL     - All treasury data
+#   govies.sovereign/DE/5Y/ALL      - German 5Y bunds
+govies.treasury:
+  display_name: US Treasury Securities
+  description: US Treasury bills, notes, and bonds with yields and pricing
+
+  data_quality:
+    dq_owner: fi-dq-team@firm.com
+    quality_score: 98.2
+    validation_rules:
+      - "Yield must be positive for non-TIPS securities"
+      - "Maturity date must be in the future"
+      - "CUSIP must be valid 9-character format"
+    last_validated: "2026-01-28T07:00:00Z"
+
+  sla:
+    freshness: "T+0 by 18:00 ET"
+    availability: "99.9%"
+    support_hours: "24/5 (Mon-Fri)"
+    escalation_contact: fi-oncall@firm.com
+
+  freshness:
+    last_loaded: "2026-01-28T17:45:00Z"
+    refresh_schedule: "Continuous during market hours"
+    source_system: "Treasury Direct / Bloomberg"
+    upstream_dependencies:
+      - "reference.security"
+      - "market-data.rates"
+
+  schema:
+    description: |
+      US Treasury securities including T-Bills, Notes, and Bonds.
+      Contains pricing, yield curve data, and duration analytics.
+      Primary source for risk-free rate benchmarking.
+
+    semantic_tags:
+      - government-bonds
+      - treasury
+      - fixed-income
+      - yield-curve
+      - risk-free-rate
+      - sovereign
+      - timeseries
+
+    granularity: "daily, per-security, per-tenor"
+    typical_row_count: "10K-100K"
+    update_frequency: "continuous (market hours)"
+
+    primary_key:
+      - ASOF_DATE
+      - CUSIP
+      - TENOR
+
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: "Pricing date"
+        semantic_type: timestamp
+        example: "2026-01-28"
+        nullable: false
+        primary_key: true
+
+      - name: CUSIP
+        type: string
+        description: "CUSIP identifier for the security"
+        semantic_type: identifier
+        example: "912828ZT5"
+        nullable: false
+        primary_key: true
+        foreign_key: "reference.security/CUSIP"
+
+      - name: COUNTRY
+        type: string
+        description: "Issuing country (ISO 3166-1 alpha-2)"
+        semantic_type: dimension
+        example: "US"
+        nullable: false
+
+      - name: TENOR
+        type: string
+        description: "Maturity tenor bucket (3M, 6M, 1Y, 2Y, 5Y, 10Y, 30Y)"
+        semantic_type: dimension
+        example: "10Y"
+        nullable: false
+        primary_key: true
+
+      - name: COUPON
+        type: float
+        description: "Annual coupon rate (decimal)"
+        semantic_type: measure
+        example: "0.0375"
+        nullable: false
+
+      - name: YIELD
+        type: float
+        description: "Yield to maturity (decimal)"
+        semantic_type: measure
+        example: "0.0425"
+        nullable: false
+
+      - name: PRICE
+        type: float
+        description: "Clean price (percentage of par)"
+        semantic_type: measure
+        example: "98.75"
+        nullable: false
+
+      - name: DURATION
+        type: float
+        description: "Modified duration (years)"
+        semantic_type: measure
+        example: "8.45"
+        nullable: false
+
+      - name: CONVEXITY
+        type: float
+        description: "Convexity measure"
+        semantic_type: measure
+        example: "0.85"
+        nullable: true
+
+    use_cases:
+      - "Build yield curve for discounting"
+      - "Calculate duration and convexity for portfolio"
+      - "Monitor Treasury market movements"
+      - "Benchmark against risk-free rate"
+      - "Regulatory capital calculations"
+
+    examples:
+      - "govies.treasury/US/10Y/ALL - All 10Y Treasury data"
+      - "govies.treasury/US/ALL/ALL - Full US Treasury curve"
+      - "govies.treasury/ALL/ALL/912828ZT5 - Specific CUSIP history"
+
+    related_monikers:
+      - "rates.swap - Interest rate swaps for spread analysis"
+      - "reference.security/CUSIP - Security master lookup"
+      - "risk.cvar - CVaR calculations using treasuries"
+
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: MARKET_DATA_WH
+      database: FIXED_INCOME
+      schema: GOVIES
+      query: |
+        SELECT asof_date, cusip, country, tenor, coupon, yield, price, duration, convexity
+        FROM TREASURY_SECURITIES
+        WHERE ('{segments[0]}' = 'ALL' OR country = '{segments[0]}')
+          AND ('{segments[1]}' = 'ALL' OR tenor = '{segments[1]}')
+          AND ('{segments[2]}' = 'ALL' OR cusip = '{segments[2]}')
+        ORDER BY asof_date DESC, tenor
+
+govies.sovereign:
+  display_name: International Sovereign Bonds
+  description: Non-US government bonds (Bunds, Gilts, JGBs, etc.)
+
+  schema:
+    description: |
+      International sovereign debt from major developed markets.
+      Includes German Bunds, UK Gilts, Japanese JGBs, and other G10 sovereigns.
+
+    semantic_tags:
+      - government-bonds
+      - sovereign
+      - international
+      - fixed-income
+      - bunds
+      - gilts
+      - jgbs
+
+    granularity: "daily, per-country, per-tenor"
+    typical_row_count: "50K-500K"
+    update_frequency: "daily (T+1)"
+
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: "Pricing date"
+        semantic_type: timestamp
+        example: "2026-01-28"
+
+      - name: ISIN
+        type: string
+        description: "International Securities Identification Number"
+        semantic_type: identifier
+        example: "DE0001102481"
+        foreign_key: "reference.security/ISIN"
+
+      - name: COUNTRY
+        type: string
+        description: "Issuing country (ISO 3166-1 alpha-2)"
+        semantic_type: dimension
+        example: "DE"
+
+      - name: TENOR
+        type: string
+        description: "Maturity tenor"
+        semantic_type: dimension
+        example: "10Y"
+
+      - name: YIELD
+        type: float
+        description: "Yield to maturity (decimal)"
+        semantic_type: measure
+        example: "0.0215"
+
+      - name: SPREAD_VS_USD
+        type: float
+        description: "Spread versus comparable US Treasury (bps)"
+        semantic_type: measure
+        example: "-125.5"
+
+    use_cases:
+      - "Cross-market yield comparisons"
+      - "Currency-hedged return analysis"
+      - "Global duration management"
+
+    examples:
+      - "govies.sovereign/DE/10Y/ALL - German 10Y Bunds"
+      - "govies.sovereign/GB/ALL/ALL - All UK Gilts"
+
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: MARKET_DATA_WH
+      database: FIXED_INCOME
+      schema: GOVIES
+      query: |
+        SELECT asof_date, isin, country, tenor, yield, spread_vs_usd, price, duration
+        FROM SOVEREIGN_BONDS
+        WHERE ('{segments[0]}' = 'ALL' OR country = '{segments[0]}')
+          AND ('{segments[1]}' = 'ALL' OR tenor = '{segments[1]}')
+          AND ('{segments[2]}' = 'ALL' OR isin = '{segments[2]}')
+        ORDER BY asof_date DESC, country, tenor
+
+
+# =============================================================================
+# COMMODS - Commodities Data (REST API - NEFA)
+# =============================================================================
+
+commods:
+  display_name: Commodities
+  description: Commodity futures, spot prices, and physical market data
+  ownership:
+    accountable_owner: commodities-governance@firm.com
+    data_specialist: commods-quant@firm.com
+    support_channel: "#commodities-data"
+    adop: commods-trading-head@firm.com
+    ads: commods-data-steward@firm.com
+    adal: commods-access-control@firm.com
+  classification: internal
+
+# Example monikers:
+#   commods.energy/CL/SPOT/ALL      - Crude oil spot prices
+#   commods.energy/NG/F1/ALL        - Natural gas front month
+#   commods.metals/GC/SPOT/ALL      - Gold spot prices
+commods.energy:
+  display_name: Energy Commodities
+  description: Crude oil, natural gas, and refined products from NEFA API
+
+  data_quality:
+    dq_owner: commods-dq@firm.com
+    quality_score: 96.8
+    validation_rules:
+      - "Price must be positive"
+      - "Volume must be non-negative"
+      - "Contract codes must match exchange symbology"
+    known_issues:
+      - "Some illiquid contracts may have stale prices on low-volume days"
+    last_validated: "2026-01-28T08:00:00Z"
+
+  sla:
+    freshness: "Real-time (15-min delay for non-pro)"
+    availability: "99.5%"
+    support_hours: "24/6 (Sun 6pm - Fri 5pm ET)"
+    escalation_contact: commods-oncall@firm.com
+
+  freshness:
+    last_loaded: "2026-01-28T14:30:00Z"
+    refresh_schedule: "Real-time via API"
+    source_system: "NEFA Energy Data API"
+    upstream_dependencies:
+      - "reference.contracts"
+
+  schema:
+    description: |
+      Energy commodity prices from the NEFA (National Energy & Futures API).
+      Includes crude oil (WTI, Brent), natural gas, heating oil, gasoline,
+      and other energy derivatives. Supports spot, futures, and spread data.
+
+    semantic_tags:
+      - commodities
+      - energy
+      - crude-oil
+      - natural-gas
+      - futures
+      - spot
+      - nefa
+      - real-time
+
+    granularity: "intraday, per-commodity, per-contract"
+    typical_row_count: "100K-1M"
+    update_frequency: "real-time"
+
+    primary_key:
+      - TIMESTAMP
+      - SYMBOL
+      - CONTRACT
+
+    columns:
+      - name: TIMESTAMP
+        type: datetime
+        description: "Price timestamp (UTC)"
+        semantic_type: timestamp
+        example: "2026-01-28T14:30:00Z"
+        nullable: false
+        primary_key: true
+
+      - name: SYMBOL
+        type: string
+        description: "Commodity symbol (CL=Crude, NG=NatGas, HO=Heating Oil)"
+        semantic_type: identifier
+        example: "CL"
+        nullable: false
+        primary_key: true
+
+      - name: CONTRACT
+        type: string
+        description: "Contract type (SPOT, F1=front month, F2=second month, etc.)"
+        semantic_type: dimension
+        example: "F1"
+        nullable: false
+        primary_key: true
+
+      - name: PRICE
+        type: float
+        description: "Price per unit (USD)"
+        semantic_type: measure
+        example: "78.45"
+        nullable: false
+
+      - name: CHANGE
+        type: float
+        description: "Price change from prior close"
+        semantic_type: measure
+        example: "-0.52"
+        nullable: true
+
+      - name: CHANGE_PCT
+        type: float
+        description: "Percentage change from prior close"
+        semantic_type: measure
+        example: "-0.66"
+        nullable: true
+
+      - name: VOLUME
+        type: integer
+        description: "Trading volume (contracts)"
+        semantic_type: measure
+        example: "125000"
+        nullable: true
+
+      - name: OPEN_INTEREST
+        type: integer
+        description: "Open interest (contracts)"
+        semantic_type: measure
+        example: "450000"
+        nullable: true
+
+    use_cases:
+      - "Real-time energy price monitoring"
+      - "Futures curve analysis"
+      - "Hedging strategy development"
+      - "Correlation analysis with equity markets"
+      - "Commodity-linked derivative pricing"
+
+    examples:
+      - "commods.energy/CL/SPOT/ALL - WTI Crude spot prices"
+      - "commods.energy/CL/F1/ALL - Crude front month futures"
+      - "commods.energy/NG/ALL/ALL - All natural gas contracts"
+
+    related_monikers:
+      - "commods.metals - Precious metals data"
+      - "prices.fx - Currency rates for conversion"
+      - "risk.cvar - Commodity portfolio risk"
+
+  source_binding:
+    type: rest
+    config:
+      base_url: https://api.nefa.energy
+      path_template: /v2/commodities/energy/{segments[0]}/{segments[1]}
+      method: GET
+      auth_type: api_key
+      headers:
+        Accept: application/json
+        X-API-Version: "2.0"
+      query_params:
+        format: json
+        include_history: "true"
+
+commods.metals:
+  display_name: Precious & Industrial Metals
+  description: Gold, silver, copper, and other metals from NEFA API
+
+  schema:
+    description: |
+      Precious and industrial metals prices from NEFA.
+      Includes gold (GC), silver (SI), copper (HG), platinum (PL), palladium (PA).
+
+    semantic_tags:
+      - commodities
+      - metals
+      - gold
+      - silver
+      - precious-metals
+      - industrial-metals
+      - futures
+
+    granularity: "intraday, per-metal, per-contract"
+    typical_row_count: "50K-200K"
+    update_frequency: "real-time"
+
+    columns:
+      - name: TIMESTAMP
+        type: datetime
+        description: "Price timestamp (UTC)"
+        semantic_type: timestamp
+        example: "2026-01-28T14:30:00Z"
+
+      - name: SYMBOL
+        type: string
+        description: "Metal symbol (GC=Gold, SI=Silver, HG=Copper)"
+        semantic_type: identifier
+        example: "GC"
+
+      - name: CONTRACT
+        type: string
+        description: "Contract type (SPOT, F1, F2, etc.)"
+        semantic_type: dimension
+        example: "SPOT"
+
+      - name: PRICE
+        type: float
+        description: "Price per troy oz (precious) or lb (industrial)"
+        semantic_type: measure
+        example: "2045.30"
+
+      - name: CURRENCY
+        type: string
+        description: "Price currency (usually USD)"
+        semantic_type: dimension
+        example: "USD"
+
+    use_cases:
+      - "Precious metals portfolio tracking"
+      - "Inflation hedge analysis"
+      - "Industrial demand forecasting"
+
+    examples:
+      - "commods.metals/GC/SPOT/ALL - Gold spot prices"
+      - "commods.metals/SI/F1/ALL - Silver front month"
+
+  source_binding:
+    type: rest
+    config:
+      base_url: https://api.nefa.energy
+      path_template: /v2/commodities/metals/{segments[0]}/{segments[1]}
+      method: GET
+      auth_type: api_key
+      headers:
+        Accept: application/json
+
+
+# =============================================================================
+# RATES - Interest Rate Data (Snowflake)
+# =============================================================================
+
+rates:
+  display_name: Interest Rates
+  description: Interest rate curves, swaps, and money market rates
+  ownership:
+    accountable_owner: rates-governance@firm.com
+    data_specialist: rates-quant@firm.com
+    support_channel: "#rates-data"
+    adop: rates-trading-head@firm.com
+    ads: rates-data-steward@firm.com
+    adal: rates-access-control@firm.com
+  classification: internal
+
+# Example monikers:
+#   rates.swap/USD/5Y/ALL           - 5Y USD swap rates
+#   rates.libor/USD/3M/ALL          - 3M USD LIBOR (legacy)
+#   rates.sofr/USD/ON/ALL           - Overnight SOFR
+rates.swap:
+  display_name: Interest Rate Swaps
+  description: Par swap rates across currencies and tenors
+
+  data_quality:
+    dq_owner: rates-dq@firm.com
+    quality_score: 99.1
+    validation_rules:
+      - "Rate must be within reasonable bounds for currency"
+      - "Curve must be monotonically increasing for normal conditions"
+      - "Spread to benchmark must be calculated correctly"
+    last_validated: "2026-01-28T06:30:00Z"
+
+  sla:
+    freshness: "T+0 by 17:00 local"
+    availability: "99.9%"
+    support_hours: "Business hours (regional)"
+    escalation_contact: rates-oncall@firm.com
+
+  freshness:
+    last_loaded: "2026-01-28T16:45:00Z"
+    refresh_schedule: "EOD snapshots + intraday updates"
+    source_system: "Bloomberg / Refinitiv"
+    upstream_dependencies:
+      - "rates.sofr"
+      - "reference.calendars"
+
+  schema:
+    description: |
+      Interest rate swap par rates for major currencies.
+      Used for discounting, yield curve construction, and derivative pricing.
+      Includes USD, EUR, GBP, JPY, and other G10 currencies.
+
+    semantic_tags:
+      - interest-rates
+      - swaps
+      - yield-curve
+      - derivatives
+      - discounting
+      - sofr
+      - euribor
+      - fixed-income
+
+    granularity: "daily, per-currency, per-tenor"
+    typical_row_count: "10K-50K"
+    update_frequency: "daily + intraday"
+
+    primary_key:
+      - ASOF_DATE
+      - CURRENCY
+      - TENOR
+
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: "Rate observation date"
+        semantic_type: timestamp
+        example: "2026-01-28"
+        nullable: false
+        primary_key: true
+
+      - name: CURRENCY
+        type: string
+        description: "Currency (ISO 4217)"
+        semantic_type: dimension
+        example: "USD"
+        nullable: false
+        primary_key: true
+
+      - name: TENOR
+        type: string
+        description: "Swap tenor (1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 15Y, 20Y, 30Y)"
+        semantic_type: dimension
+        example: "10Y"
+        nullable: false
+        primary_key: true
+
+      - name: PAR_RATE
+        type: float
+        description: "Par swap rate (decimal)"
+        semantic_type: measure
+        example: "0.0385"
+        nullable: false
+
+      - name: SPREAD_VS_GOVT
+        type: float
+        description: "Spread versus government bond (bps)"
+        semantic_type: measure
+        example: "15.5"
+        nullable: true
+
+      - name: DV01
+        type: float
+        description: "Dollar value of 1bp move per $1M notional"
+        semantic_type: measure
+        example: "875.50"
+        nullable: true
+
+    use_cases:
+      - "Yield curve construction"
+      - "Derivative pricing and valuation"
+      - "Duration hedging"
+      - "Spread trading analysis"
+      - "Risk-free rate determination"
+
+    examples:
+      - "rates.swap/USD/10Y/ALL - 10Y USD swap rate history"
+      - "rates.swap/EUR/ALL/ALL - Full EUR swap curve"
+      - "rates.swap/ALL/5Y/ALL - 5Y rates across currencies"
+
+    related_monikers:
+      - "govies.treasury - Treasury yields for spread calc"
+      - "rates.sofr - SOFR rates for discounting"
+      - "risk.cvar - Interest rate risk"
+
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: MARKET_DATA_WH
+      database: RATES
+      schema: SWAPS
+      query: |
+        SELECT asof_date, currency, tenor, par_rate, spread_vs_govt, dv01
+        FROM SWAP_RATES
+        WHERE ('{segments[0]}' = 'ALL' OR currency = '{segments[0]}')
+          AND ('{segments[1]}' = 'ALL' OR tenor = '{segments[1]}')
+        ORDER BY asof_date DESC, currency, tenor
+
+rates.sofr:
+  display_name: SOFR Rates
+  description: Secured Overnight Financing Rate and term SOFR
+
+  schema:
+    description: |
+      SOFR (Secured Overnight Financing Rate) - the primary USD risk-free rate.
+      Includes overnight SOFR, term SOFR, and SOFR averages.
+
+    semantic_tags:
+      - sofr
+      - risk-free-rate
+      - overnight
+      - benchmark
+      - interest-rates
+
+    granularity: "daily"
+    typical_row_count: "1K-5K"
+    update_frequency: "daily (T+1)"
+
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: "Rate date"
+        semantic_type: timestamp
+        example: "2026-01-28"
+
+      - name: RATE_TYPE
+        type: string
+        description: "SOFR type (ON, 30D_AVG, 90D_AVG, TERM_1M, TERM_3M)"
+        semantic_type: dimension
+        example: "ON"
+
+      - name: RATE
+        type: float
+        description: "Rate value (decimal)"
+        semantic_type: measure
+        example: "0.0430"
+
+    use_cases:
+      - "Loan and derivative pricing"
+      - "Benchmark rate analysis"
+      - "LIBOR transition"
+
+    examples:
+      - "rates.sofr/USD/ON/ALL - Overnight SOFR history"
+
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: MARKET_DATA_WH
+      database: RATES
+      schema: BENCHMARKS
+      query: |
+        SELECT asof_date, 'USD' as currency, rate_type, rate
+        FROM SOFR_RATES
+        WHERE ('{segments[1]}' = 'ALL' OR rate_type = '{segments[1]}')
+        ORDER BY asof_date DESC
+
+
+# =============================================================================
+# MORTGAGES - Mortgage Data (Excel)
+# =============================================================================
+
+mortgages:
+  display_name: Mortgage Analytics
+  description: Mortgage-backed securities, prepayment data, and pool analytics
+  ownership:
+    accountable_owner: mbs-governance@firm.com
+    data_specialist: mbs-research@firm.com
+    support_channel: "#mortgage-data"
+    adop: securitized-head@firm.com
+    ads: mbs-data-steward@firm.com
+    adal: mbs-access-control@firm.com
+  classification: confidential
+
+# Example monikers:
+#   mortgages.pools/FNMA/30Y/ALL    - Fannie Mae 30Y pools
+#   mortgages.prepay/GNMA/15Y/ALL   - Ginnie Mae 15Y prepayment data
+mortgages.pools:
+  display_name: MBS Pool Data
+  description: Agency MBS pool characteristics and analytics from Excel models
+
+  data_quality:
+    dq_owner: mbs-dq@firm.com
+    quality_score: 92.5
+    validation_rules:
+      - "WAC must be positive and reasonable"
+      - "WAM must be less than original term"
+      - "Pool factor must be between 0 and 1"
+    known_issues:
+      - "Some legacy pools have incomplete geographic data"
+      - "Prepayment projections updated monthly"
+    last_validated: "2026-01-27T12:00:00Z"
+
+  sla:
+    freshness: "Monthly (factor data), Daily (prices)"
+    availability: "99.0%"
+    support_hours: "Business hours ET"
+    escalation_contact: mbs-research@firm.com
+
+  freshness:
+    last_loaded: "2026-01-15T08:00:00Z"
+    refresh_schedule: "Monthly factor updates, daily price updates"
+    source_system: "Internal MBS Analytics (Excel)"
+    upstream_dependencies:
+      - "reference.security"
+      - "rates.swap"
+
+  schema:
+    description: |
+      Agency mortgage-backed securities pool data from internal Excel models.
+      Includes Fannie Mae (FNMA), Freddie Mac (FHLMC), and Ginnie Mae (GNMA) pools.
+      Contains pool characteristics, prepayment projections, and OAS analytics.
+
+    semantic_tags:
+      - mortgages
+      - mbs
+      - agency
+      - prepayment
+      - securitization
+      - fixed-income
+      - fannie-mae
+      - freddie-mac
+      - ginnie-mae
+
+    granularity: "monthly, per-agency, per-coupon"
+    typical_row_count: "50K-200K"
+    update_frequency: "monthly (factors), daily (prices)"
+
+    primary_key:
+      - ASOF_DATE
+      - POOL_ID
+      - AGENCY
+
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: "Data as-of date"
+        semantic_type: timestamp
+        example: "2026-01-15"
+        nullable: false
+        primary_key: true
+
+      - name: POOL_ID
+        type: string
+        description: "Pool identifier (CUSIP or pool number)"
+        semantic_type: identifier
+        example: "31417EQ38"
+        nullable: false
+        primary_key: true
+        foreign_key: "reference.security/CUSIP"
+
+      - name: AGENCY
+        type: string
+        description: "Issuing agency (FNMA, FHLMC, GNMA)"
+        semantic_type: dimension
+        example: "FNMA"
+        nullable: false
+        primary_key: true
+
+      - name: COUPON
+        type: string
+        description: "Pool coupon (e.g., 30Y, 15Y)"
+        semantic_type: dimension
+        example: "30Y"
+        nullable: false
+
+      - name: WAC
+        type: float
+        description: "Weighted average coupon (decimal)"
+        semantic_type: measure
+        example: "0.0425"
+        nullable: false
+
+      - name: WAM
+        type: integer
+        description: "Weighted average maturity (months)"
+        semantic_type: measure
+        example: "342"
+        nullable: false
+
+      - name: WALA
+        type: integer
+        description: "Weighted average loan age (months)"
+        semantic_type: measure
+        example: "18"
+        nullable: false
+
+      - name: POOL_FACTOR
+        type: float
+        description: "Current pool factor (remaining principal)"
+        semantic_type: measure
+        example: "0.9234"
+        nullable: false
+
+      - name: CPR_1M
+        type: float
+        description: "1-month conditional prepayment rate"
+        semantic_type: measure
+        example: "8.5"
+        nullable: true
+
+      - name: CPR_3M
+        type: float
+        description: "3-month conditional prepayment rate"
+        semantic_type: measure
+        example: "9.2"
+        nullable: true
+
+      - name: OAS
+        type: float
+        description: "Option-adjusted spread (bps)"
+        semantic_type: measure
+        example: "45.5"
+        nullable: true
+
+      - name: PRICE
+        type: float
+        description: "Current price (percentage of par)"
+        semantic_type: measure
+        example: "101.25"
+        nullable: true
+
+    use_cases:
+      - "MBS portfolio analytics"
+      - "Prepayment modeling"
+      - "Relative value analysis"
+      - "Duration and convexity calculations"
+      - "Regulatory capital (GSE exposure)"
+
+    examples:
+      - "mortgages.pools/FNMA/30Y/ALL - All Fannie 30Y pools"
+      - "mortgages.pools/ALL/ALL/31417EQ38 - Specific pool history"
+      - "mortgages.pools/GNMA/15Y/ALL - Ginnie Mae 15Y pools"
+
+    related_monikers:
+      - "rates.swap - Swap rates for OAS calculation"
+      - "govies.treasury - Treasury yields for spread"
+      - "mortgages.prepay - Prepayment model outputs"
+
+  source_binding:
+    type: excel
+    config:
+      base_path: /data/mbs/pools
+      file_pattern: "{segments[0]}_{segments[1]}_pools.xlsx"
+      sheet: PoolData
+      header_row: 2
+
+mortgages.prepay:
+  display_name: Prepayment Projections
+  description: MBS prepayment model outputs and CPR projections
+
+  schema:
+    description: |
+      Prepayment projections from internal MBS models.
+      Includes CPR scenarios, S-curves, and turnover analysis.
+
+    semantic_tags:
+      - mortgages
+      - prepayment
+      - cpr
+      - modeling
+      - projections
+
+    granularity: "monthly, per-pool"
+    typical_row_count: "100K-500K"
+    update_frequency: "monthly"
+
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: "Projection date"
+        semantic_type: timestamp
+        example: "2026-01-15"
+
+      - name: POOL_ID
+        type: string
+        description: "Pool identifier"
+        semantic_type: identifier
+        example: "31417EQ38"
+
+      - name: SCENARIO
+        type: string
+        description: "Rate scenario (BASE, UP100, DN100)"
+        semantic_type: dimension
+        example: "BASE"
+
+      - name: CPR_PROJ
+        type: float
+        description: "Projected CPR for next 12 months"
+        semantic_type: measure
+        example: "12.5"
+
+      - name: SMM
+        type: float
+        description: "Single monthly mortality rate"
+        semantic_type: measure
+        example: "1.05"
+
+    use_cases:
+      - "Prepayment scenario analysis"
+      - "Cash flow projections"
+      - "Duration hedging"
+
+    examples:
+      - "mortgages.prepay/FNMA/30Y/ALL - Fannie 30Y prepay projections"
+
+  source_binding:
+    type: excel
+    config:
+      base_path: /data/mbs/prepay
+      file_pattern: "{segments[0]}_{segments[1]}_prepay.xlsx"
+      sheet: Projections
+      header_row: 1
