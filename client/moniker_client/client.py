@@ -331,7 +331,7 @@ class MonikerClient:
 
         # Or with custom config
         client = MonikerClient(config=ClientConfig(
-            service_url="http://moniker-svc:8000",
+            service_url="http://moniker-svc:8050",
             app_id="my-app",
             team="my-team",
         ))

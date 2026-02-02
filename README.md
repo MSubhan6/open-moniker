@@ -43,23 +43,23 @@ PYTHONPATH="$PWD/src:$PWD/external/moniker-data/src" uvicorn moniker_svc.main:ap
 $env:PYTHONPATH="$PWD\src;$PWD\external\moniker-data\src"; uvicorn moniker_svc.main:app --reload
 
 # 3. Open the web UI
-# http://localhost:8000/ui
+# http://localhost:8050/ui
 ```
 
 ## Try the API
 
 ```bash
 # Browse the catalog tree
-curl http://localhost:8000/tree
+curl http://localhost:8050/tree
 
 # Get metadata for a domain
-curl http://localhost:8000/describe/risk.cvar
+curl http://localhost:8050/describe/risk.cvar
 
 # Fetch sample data (uses mock Oracle adapter)
-curl http://localhost:8000/sample/risk.cvar
+curl http://localhost:8050/sample/risk.cvar
 
 # See all endpoints
-curl http://localhost:8000/
+curl http://localhost:8050/
 ```
 
 ## Use the Client Library
@@ -177,7 +177,7 @@ open-moniker-svc/
 
 ## Web UI
 
-Browse the catalog visually at **http://localhost:8000/ui**
+Browse the catalog visually at **http://localhost:8050/ui**
 
 - Tree view of all data domains
 - Click nodes to see ownership, source type, governance roles

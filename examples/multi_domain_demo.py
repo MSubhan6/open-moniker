@@ -15,7 +15,7 @@ unified access pattern provided by the moniker service.
 Usage:
     # Start the service in one terminal:
     cd /home/user/open-moniker-svc
-    python -m uvicorn moniker_svc.main:app --port 8000
+    python -m uvicorn moniker_svc.main:app --port 8050
 
     # Run this demo in another terminal:
     python examples/multi_domain_demo.py
@@ -58,7 +58,7 @@ def run_demo():
 
     # Create client
     config = ClientConfig(
-        service_url="http://localhost:8000",
+        service_url="http://localhost:8050",
         app_id="multi-domain-demo",
         team="data-platform",
         report_telemetry=False,
@@ -316,7 +316,7 @@ def run_standalone():
 
     # Create a temporary config file
     config = {
-        "server": {"port": 8000},
+        "server": {"port": 8050},
         "telemetry": {"enabled": False},
         "cache": {"enabled": True, "max_size": 1000, "default_ttl_seconds": 60},
         "catalog": {"definition_file": str(project_root / "sample_catalog.yaml")},
@@ -335,7 +335,7 @@ def run_standalone():
     # Start uvicorn in background
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "moniker_svc.main:app",
-         "--port", "8000", "--log-level", "warning"],
+         "--port", "8050", "--log-level", "warning"],
         cwd=project_root,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

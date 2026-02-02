@@ -40,7 +40,7 @@ Set environment variables:
 
 ```bash
 # Moniker service URL
-export MONIKER_SERVICE_URL=http://moniker-svc:8000
+export MONIKER_SERVICE_URL=http://moniker-svc:8050
 
 # Your identity (for telemetry)
 export MONIKER_APP_ID=my-notebook
@@ -60,7 +60,7 @@ Or configure programmatically:
 from moniker_client import MonikerClient, ClientConfig
 
 config = ClientConfig(
-    service_url="http://moniker-svc:8000",
+    service_url="http://moniker-svc:8050",
     app_id="my-notebook",
     team="quant-research",
 )

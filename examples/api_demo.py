@@ -19,7 +19,7 @@ import json
 from pprint import pprint
 
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8050"
 
 
 def print_section(title: str):

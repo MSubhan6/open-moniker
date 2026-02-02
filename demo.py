@@ -162,7 +162,7 @@ def demo_client_usage():
 
   {c('Configure via environment:', Style.BRIGHT)}
 
-    export MONIKER_SERVICE_URL=http://moniker-svc:8000
+    export MONIKER_SERVICE_URL=http://moniker-svc:8050
     export MONIKER_APP_ID=my-notebook
     export MONIKER_TEAM=quant-research
 
@@ -175,7 +175,7 @@ def demo_client_usage():
     from moniker_client import MonikerClient, ClientConfig
 
     client = MonikerClient(config=ClientConfig(
-        service_url="http://moniker-svc:8000",
+        service_url="http://moniker-svc:8050",
         app_id="my-app",
     ))
     data = client.read("market-data/prices/equity/AAPL")

@@ -267,7 +267,7 @@ def main():
 
     parser.add_argument(
         "--base-url",
-        default="http://localhost:8000",
+        default="http://localhost:8050",
         help="Base URL of the moniker service",
     )
     parser.add_argument(

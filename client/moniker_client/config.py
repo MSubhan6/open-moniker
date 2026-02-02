@@ -19,7 +19,7 @@ class ClientConfig:
     """
     # Moniker service URL
     service_url: str = field(
-        default_factory=lambda: os.environ.get("MONIKER_SERVICE_URL", "http://localhost:8000")
+        default_factory=lambda: os.environ.get("MONIKER_SERVICE_URL", "http://localhost:8050")
     )
 
     # Identity headers

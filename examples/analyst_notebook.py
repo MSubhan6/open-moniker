@@ -9,7 +9,7 @@ Setup:
     pip install moniker-client[snowflake]  # or [all] for all adapters
 
 Environment variables (set these before running):
-    export MONIKER_SERVICE_URL=http://moniker-svc:8000
+    export MONIKER_SERVICE_URL=http://moniker-svc:8050
     export MONIKER_APP_ID=my-notebook
     export MONIKER_TEAM=quant-research
     export SNOWFLAKE_USER=your_user
@@ -214,7 +214,7 @@ from moniker_client import MonikerClient, ClientConfig
 
 # Create client with custom config
 config = ClientConfig(
-    service_url="http://moniker-svc:8000",
+    service_url="http://moniker-svc:8050",
     app_id="research-notebook",
     team="quant-research",
     timeout=60.0,  # Longer timeout for large queries
