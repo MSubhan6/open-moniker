@@ -2,6 +2,52 @@
 
 A unified data access layer for enterprise data governance. Canonical identification for all firm data assets with hierarchical ownership and access telemetry.
 
+## Example: AAPL Price Time Series
+
+```python
+from moniker_client import read
+
+# Fetch today's AAPL prices
+data = read("prices.equity/AAPL")
+
+# Fetch historical data for a specific date
+historical = read("prices.equity/AAPL@20260115")
+
+# Get the latest available snapshot
+latest = read("prices.equity/AAPL@latest")
+```
+
+**What happens under the hood:**
+
+1. Client calls `GET /resolve/prices.equity/AAPL`
+2. Service returns connection info + query template
+3. Client executes query against Snowflake/Oracle/etc
+4. Data returned as pandas DataFrame or dict
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Your Code                                                      │
+│    data = read("prices.equity/AAPL@20260115")                   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ GET /resolve/prices.equity/AAPL@20260115
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Moniker Service                                                │
+│    Returns: {                                                   │
+│      "source_type": "snowflake",                                │
+│      "connection": {"account": "firm.snowflake"},               │
+│      "query": "SELECT * FROM PRICES WHERE symbol='AAPL'         │
+│               AND trade_date = TO_DATE('20260115','YYYYMMDD')"  │
+│    }                                                            │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ Client executes query
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Snowflake                                                      │
+│    → Returns price data                                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Architecture
 
 ```
@@ -62,7 +108,29 @@ curl http://localhost:8050/sample/risk.cvar
 curl http://localhost:8050/
 ```
 
-## Use the Client Library
+## Using the Client Library
+
+### Simple Read API
+
+```python
+from moniker_client import read, describe, lineage
+
+# Read data - returns dict or DataFrame
+data = read("prices.equity/AAPL")
+data = read("prices.equity/AAPL@20260115")      # Historical date
+data = read("prices.equity/AAPL@latest")        # Latest snapshot
+
+# Get metadata and ownership
+info = describe("prices.equity/AAPL")
+print(info["ownership"]["accountable_owner"])   # market-data-governance@firm.com
+print(info["ownership"]["support_channel"])     # #market-data
+
+# Trace data lineage
+lin = lineage("prices.equity/AAPL")
+print(lin["path_hierarchy"])                    # ['prices', 'prices.equity', ...]
+```
+
+### Object-Oriented API
 
 ```python
 from moniker_client import Moniker
@@ -81,6 +149,22 @@ print(result.data)            # [{'portfolio_id': 'DESK_A', ...}, ...]
 meta = m.metadata()
 print(meta.semantic_tags)     # ['risk', 'cvar', 'portfolio-risk']
 print(meta.cost_indicators)   # {'row_estimate': 50000}
+```
+
+### Version and Namespace Syntax
+
+```python
+# Date versions (YYYYMMDD format)
+read("prices.equity/AAPL@20260115")
+
+# Special versions
+read("prices.equity/AAPL@latest")
+
+# User namespace (for user-specific views)
+read("user@analytics.risk/views/my-watchlist")
+
+# Schema revision
+read("risk.cvar/DESK_A@20260115/v2")
 ```
 
 ## Run Tests
