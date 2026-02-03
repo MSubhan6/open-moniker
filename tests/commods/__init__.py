@@ -1,0 +1,1 @@
+"""Commodities domain integration tests."""
