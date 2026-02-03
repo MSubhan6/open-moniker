@@ -1,1 +1,0 @@
-"""Risk domain integration tests."""
