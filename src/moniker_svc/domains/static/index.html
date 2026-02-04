@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domain Configuration</title>
+    <style>
+        /* Corporate Design Tokens */
+        :root {
+            /* Typography */
+            --font-sans: Arial, Helvetica, sans-serif;
+            --fs-900: 20px;
+            --fs-800: 18px;
+            --fs-700: 16px;
+            --fs-600: 14px;
+            --fs-500: 12px;
+            --fw-regular: 400;
+            --fw-bold: 700;
+            --lh-tight: 1.15;
+            --lh-normal: 1.45;
+
+            /* Spacing */
+            --sp-1: 4px;
+            --sp-2: 8px;
+            --sp-3: 12px;
+            --sp-4: 16px;
+            --sp-5: 24px;
+            --sp-6: 32px;
+
+            /* Radius */
+            --radius-1: 4px;
+            --radius-2: 8px;
+
+            /* Corporate Color Palette */
+            --c-navy: #022D5E;
+            --c-gray: #53565A;
+            --c-peacock: #005587;
+            --c-olive: #789D4A;
+            --c-wine: #621244;
+            --c-cerulean: #008BCD;
+            --c-teal: #00897B;
+            --c-denim: #36749D;
+            --c-red: #D0002B;
+            --c-yellow: #FFD100;
+            --c-green: #009639;
+
+            /* Semantic Colors */
+            --color-bg: #f8f9fa;
+            --color-surface: #ffffff;
+            --color-text: #111111;
+            --color-muted: var(--c-gray);
+            --color-primary: var(--c-navy);
+            --color-accent: var(--c-peacock);
+            --color-success: var(--c-green);
+            --color-warning: var(--c-yellow);
+            --color-danger: var(--c-red);
+
+            /* Component Colors */
+            --border: rgba(83, 86, 90, 0.25);
+            --focus-ring: 0 0 0 3px rgba(0, 85, 135, 0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-sans);
+            font-size: var(--fs-700);
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: var(--lh-normal);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: var(--sp-5);
+        }
+
+        header {
+            background: var(--c-navy);
+            padding: var(--sp-5);
+            border-bottom: 3px solid var(--c-peacock);
+            margin-bottom: var(--sp-5);
+        }
+
+        header h1 {
+            font-size: var(--fs-900);
+            font-weight: var(--fw-bold);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: var(--sp-3);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--sp-3);
+            margin-top: var(--sp-4);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: var(--sp-5);
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: var(--sp-3) var(--sp-5);
+            border-radius: var(--radius-2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: var(--fs-900);
+            font-weight: var(--fw-bold);
+            color: white;
+        }
+
+        .stat-label {
+            font-size: var(--fs-600);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .btn {
+            background: var(--c-peacock);
+            color: white;
+            border: none;
+            padding: var(--sp-2) var(--sp-4);
+            border-radius: var(--radius-1);
+            cursor: pointer;
+            font-size: var(--fs-600);
+            font-weight: var(--fw-bold);
+            font-family: var(--font-sans);
+            transition: filter 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--sp-2);
+        }
+
+        .btn:hover { filter: brightness(0.9); }
+        .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+        .btn-success { background: var(--c-green); }
+        .btn-danger { background: var(--c-red); }
+
+        .content {
+            background: var(--color-surface);
+            border-radius: var(--radius-2);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--fs-600);
+        }
+
+        thead {
+            background: var(--c-navy);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: var(--sp-3) var(--sp-3);
+            text-align: left;
+            font-weight: var(--fw-bold);
+            white-space: nowrap;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th:last-child { border-right: none; }
+
+        td {
+            padding: var(--sp-2) var(--sp-3);
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tr:hover td { background: rgba(0, 85, 135, 0.05); }
+
+        .editable {
+            cursor: text;
+            min-width: 80px;
+        }
+
+        .editable:hover { background: rgba(0, 85, 135, 0.08); }
+
+        .editable:focus {
+            outline: none;
+            background: white;
+            box-shadow: inset 0 0 0 2px var(--c-peacock);
+        }
+
+        .cell-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-family: var(--font-sans);
+            font-size: var(--fs-600);
+            padding: var(--sp-1);
+        }
+
+        .cell-input:focus { outline: none; }
+
+        .color-cell {
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+        }
+
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: var(--radius-1);
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .color-input {
+            width: 80px;
+            font-family: monospace;
+            font-size: var(--fs-500);
+        }
+
+        .domain-name {
+            font-weight: var(--fw-bold);
+            color: var(--c-navy);
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+        }
+
+        .domain-color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .short-code {
+            font-family: monospace;
+            background: var(--color-bg);
+            padding: 2px var(--sp-2);
+            border-radius: var(--radius-1);
+            font-size: var(--fs-500);
+        }
+
+        .badge {
+            font-size: var(--fs-500);
+            padding: 2px var(--sp-2);
+            border-radius: var(--radius-1);
+            font-weight: var(--fw-bold);
+        }
+
+        .badge-public { background: rgba(0, 150, 57, 0.15); color: var(--c-green); }
+        .badge-internal { background: rgba(0, 85, 135, 0.15); color: var(--c-peacock); }
+        .badge-confidential { background: rgba(255, 209, 0, 0.25); color: #6a4c00; }
+        .badge-strictly_confidential { background: rgba(208, 0, 43, 0.15); color: var(--c-red); }
+
+        .badge-pii-yes { background: rgba(208, 0, 43, 0.15); color: var(--c-red); }
+        .badge-pii-no { background: rgba(83, 86, 90, 0.15); color: var(--c-gray); }
+
+        .actions-cell {
+            white-space: nowrap;
+        }
+
+        .btn-icon {
+            padding: var(--sp-1) var(--sp-2);
+            background: transparent;
+            color: var(--color-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-icon:hover { color: var(--c-navy); background: var(--color-bg); }
+        .btn-icon.delete:hover { color: var(--c-red); }
+
+        .toast {
+            position: fixed;
+            bottom: var(--sp-5);
+            right: var(--sp-5);
+            padding: var(--sp-4) var(--sp-5);
+            border-radius: var(--radius-2);
+            color: white;
+            font-weight: var(--fw-bold);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--c-green); }
+        .toast.error { background: var(--c-red); }
+        .toast.info { background: var(--c-peacock); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: var(--color-surface);
+            border-radius: var(--radius-2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .modal-header {
+            background: var(--c-navy);
+            padding: var(--sp-4) var(--sp-5);
+            color: white;
+            font-weight: var(--fw-bold);
+        }
+
+        .modal-body {
+            padding: var(--sp-5);
+        }
+
+        .modal-footer {
+            padding: var(--sp-4) var(--sp-5);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--sp-3);
+        }
+
+        .form-group {
+            margin-bottom: var(--sp-4);
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: var(--fw-bold);
+            margin-bottom: var(--sp-2);
+            color: var(--c-navy);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: var(--sp-2) var(--sp-3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-1);
+            font-family: var(--font-sans);
+            font-size: var(--fs-600);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--c-peacock);
+            box-shadow: var(--focus-ring);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--sp-4);
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--sp-6);
+            color: var(--color-muted);
+        }
+
+        .link {
+            color: var(--c-peacock);
+            text-decoration: none;
+        }
+
+        .link:hover { text-decoration: underline; }
+
+        .truncate {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Domain Configuration</h1>
+            <div class="header-actions">
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="stat-value" id="stat-domains">-</div>
+                        <div class="stat-label">Domains</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="stat-confidential">-</div>
+                        <div class="stat-label">Confidential</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="stat-pii">-</div>
+                        <div class="stat-label">Contains PII</div>
+                    </div>
+                </div>
+                <button class="btn" onclick="showAddModal()">+ Add Domain</button>
+                <button class="btn btn-success" onclick="saveDomains()">Save to YAML</button>
+                <button class="btn btn-secondary" onclick="reloadDomains()">Reload</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="content">
+            <div class="table-container">
+                <table id="domains-table">
+                    <thead>
+                        <tr>
+                            <th>Domain</th>
+                            <th>Display Name</th>
+                            <th>Code</th>
+                            <th>Color</th>
+                            <th>Owner</th>
+                            <th>Tech Custodian</th>
+                            <th>Business Steward</th>
+                            <th>Category</th>
+                            <th>Confidentiality</th>
+                            <th>PII</th>
+                            <th>Help Channel</th>
+                            <th>Wiki</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="domains-body">
+                        <tr>
+                            <td colspan="14" class="empty-state">Loading domains...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header" id="modal-title">Add Domain</div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Domain Name *</label>
+                        <input type="text" class="form-control" id="field-name" placeholder="e.g., derivatives">
+                    </div>
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" class="form-control" id="field-display_name" placeholder="e.g., Derivatives">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Short Code</label>
+                        <input type="text" class="form-control" id="field-short_code" placeholder="e.g., DRV" maxlength="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Color</label>
+                        <div class="color-cell">
+                            <input type="color" id="field-color-picker" value="#6B7280">
+                            <input type="text" class="form-control color-input" id="field-color" value="#6B7280">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Owner</label>
+                        <input type="text" class="form-control" id="field-owner" placeholder="owner@firm.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Tech Custodian</label>
+                        <input type="text" class="form-control" id="field-tech_custodian" placeholder="tech-team@firm.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Business Steward</label>
+                        <input type="text" class="form-control" id="field-business_steward" placeholder="steward@firm.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Data Category</label>
+                        <input type="text" class="form-control" id="field-data_category" placeholder="e.g., Market Data">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Confidentiality</label>
+                        <select class="form-control" id="field-confidentiality">
+                            <option value="public">Public</option>
+                            <option value="internal" selected>Internal</option>
+                            <option value="confidential">Confidential</option>
+                            <option value="strictly_confidential">Strictly Confidential</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Contains PII</label>
+                        <select class="form-control" id="field-pii">
+                            <option value="false" selected>No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Help Channel</label>
+                        <input type="text" class="form-control" id="field-help_channel" placeholder="#support-channel">
+                    </div>
+                    <div class="form-group">
+                        <label>Wiki Link</label>
+                        <input type="text" class="form-control" id="field-wiki_link" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea class="form-control" id="field-notes" rows="2" placeholder="Additional notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()" style="color: var(--c-navy)">Cancel</button>
+                <button class="btn" id="modal-save-btn" onclick="saveModal()">Add Domain</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_BASE = '/domains';
+        let domains = [];
+        let editingDomain = null;
+
+        async function fetchJSON(url, options = {}) {
+            const resp = await fetch(url, options);
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+            return resp.json();
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function loadDomains() {
+            try {
+                const data = await fetchJSON(API_BASE);
+                domains = data.domains;
+                renderDomains();
+                updateStats();
+            } catch (e) {
+                showToast('Failed to load domains: ' + e.message, 'error');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-domains').textContent = domains.length;
+            document.getElementById('stat-confidential').textContent =
+                domains.filter(d => d.confidentiality === 'confidential' || d.confidentiality === 'strictly_confidential').length;
+            document.getElementById('stat-pii').textContent =
+                domains.filter(d => d.pii).length;
+        }
+
+        function renderDomains() {
+            const tbody = document.getElementById('domains-body');
+
+            if (domains.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="14" class="empty-state">
+                            <h3>No domains configured</h3>
+                            <p>Click "Add Domain" to create your first domain</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = domains.map(d => `
+                <tr data-name="${d.name}">
+                    <td>
+                        <div class="domain-name">
+                            <span class="domain-color-dot" style="background: ${d.color}"></span>
+                            ${d.name}
+                        </div>
+                    </td>
+                    <td class="editable" data-field="display_name" contenteditable="true">${escapeHtml(d.display_name)}</td>
+                    <td><span class="short-code">${d.short_code || '-'}</span></td>
+                    <td>
+                        <div class="color-cell">
+                            <input type="color" class="color-swatch" value="${d.color}" onchange="updateColor('${d.name}', this.value)">
+                            <span style="font-family: monospace; font-size: 11px">${d.color}</span>
+                        </div>
+                    </td>
+                    <td class="editable truncate" data-field="owner" contenteditable="true" title="${escapeHtml(d.owner)}">${escapeHtml(d.owner)}</td>
+                    <td class="editable truncate" data-field="tech_custodian" contenteditable="true" title="${escapeHtml(d.tech_custodian)}">${escapeHtml(d.tech_custodian)}</td>
+                    <td class="editable truncate" data-field="business_steward" contenteditable="true" title="${escapeHtml(d.business_steward)}">${escapeHtml(d.business_steward)}</td>
+                    <td class="editable" data-field="data_category" contenteditable="true">${escapeHtml(d.data_category)}</td>
+                    <td>
+                        <select class="badge badge-${d.confidentiality}" onchange="updateField('${d.name}', 'confidentiality', this.value); this.className='badge badge-'+this.value">
+                            <option value="public" ${d.confidentiality === 'public' ? 'selected' : ''}>Public</option>
+                            <option value="internal" ${d.confidentiality === 'internal' ? 'selected' : ''}>Internal</option>
+                            <option value="confidential" ${d.confidentiality === 'confidential' ? 'selected' : ''}>Confidential</option>
+                            <option value="strictly_confidential" ${d.confidentiality === 'strictly_confidential' ? 'selected' : ''}>Strictly Conf.</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="badge badge-pii-${d.pii ? 'yes' : 'no'}" onchange="updateField('${d.name}', 'pii', this.value === 'true'); this.className='badge badge-pii-'+(this.value === 'true' ? 'yes' : 'no')">
+                            <option value="false" ${!d.pii ? 'selected' : ''}>No</option>
+                            <option value="true" ${d.pii ? 'selected' : ''}>Yes</option>
+                        </select>
+                    </td>
+                    <td class="editable truncate" data-field="help_channel" contenteditable="true" title="${escapeHtml(d.help_channel)}">${escapeHtml(d.help_channel)}</td>
+                    <td>
+                        ${d.wiki_link ? `<a href="${escapeHtml(d.wiki_link)}" class="link" target="_blank" title="${escapeHtml(d.wiki_link)}">${d.wiki_link.includes('confluence') ? '📖 Confluence' : '🔗 Wiki'}</a>` : '-'}
+                    </td>
+                    <td class="editable truncate" data-field="notes" contenteditable="true" title="${escapeHtml(d.notes)}">${escapeHtml(d.notes)}</td>
+                    <td class="actions-cell">
+                        <button class="btn btn-icon" onclick="editDomain('${d.name}')" title="Edit">✏️</button>
+                        <button class="btn btn-icon delete" onclick="deleteDomain('${d.name}')" title="Delete">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Add blur handlers for editable cells
+            tbody.querySelectorAll('.editable').forEach(cell => {
+                cell.addEventListener('blur', handleCellBlur);
+            });
+        }
+
+        function handleCellBlur(e) {
+            const cell = e.target;
+            const row = cell.closest('tr');
+            const name = row.dataset.name;
+            const field = cell.dataset.field;
+            const value = cell.textContent.trim();
+
+            updateField(name, field, value);
+        }
+
+        async function updateField(name, field, value) {
+            try {
+                const payload = {};
+                payload[field] = value;
+
+                await fetchJSON(`${API_BASE}/${name}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                // Update local data
+                const domain = domains.find(d => d.name === name);
+                if (domain) domain[field] = value;
+
+                updateStats();
+            } catch (e) {
+                showToast('Failed to update: ' + e.message, 'error');
+                loadDomains(); // Reload on error
+            }
+        }
+
+        function updateColor(name, color) {
+            updateField(name, 'color', color);
+            // Update the dot
+            const row = document.querySelector(`tr[data-name="${name}"]`);
+            if (row) {
+                const dot = row.querySelector('.domain-color-dot');
+                if (dot) dot.style.background = color;
+            }
+        }
+
+        function showAddModal() {
+            editingDomain = null;
+            document.getElementById('modal-title').textContent = 'Add Domain';
+            document.getElementById('modal-save-btn').textContent = 'Add Domain';
+            document.getElementById('field-name').disabled = false;
+
+            // Clear fields
+            ['name', 'display_name', 'short_code', 'owner', 'tech_custodian',
+             'business_steward', 'data_category', 'help_channel', 'wiki_link', 'notes'].forEach(f => {
+                document.getElementById(`field-${f}`).value = '';
+            });
+            document.getElementById('field-color').value = '#6B7280';
+            document.getElementById('field-color-picker').value = '#6B7280';
+            document.getElementById('field-confidentiality').value = 'internal';
+            document.getElementById('field-pii').value = 'false';
+
+            document.getElementById('modal-overlay').classList.add('show');
+        }
+
+        function editDomain(name) {
+            const domain = domains.find(d => d.name === name);
+            if (!domain) return;
+
+            editingDomain = name;
+            document.getElementById('modal-title').textContent = 'Edit Domain';
+            document.getElementById('modal-save-btn').textContent = 'Save Changes';
+            document.getElementById('field-name').disabled = true;
+
+            // Fill fields
+            document.getElementById('field-name').value = domain.name;
+            document.getElementById('field-display_name').value = domain.display_name;
+            document.getElementById('field-short_code').value = domain.short_code;
+            document.getElementById('field-color').value = domain.color;
+            document.getElementById('field-color-picker').value = domain.color;
+            document.getElementById('field-owner').value = domain.owner;
+            document.getElementById('field-tech_custodian').value = domain.tech_custodian;
+            document.getElementById('field-business_steward').value = domain.business_steward;
+            document.getElementById('field-data_category').value = domain.data_category;
+            document.getElementById('field-confidentiality').value = domain.confidentiality;
+            document.getElementById('field-pii').value = domain.pii ? 'true' : 'false';
+            document.getElementById('field-help_channel').value = domain.help_channel;
+            document.getElementById('field-wiki_link').value = domain.wiki_link;
+            document.getElementById('field-notes').value = domain.notes;
+
+            document.getElementById('modal-overlay').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('show');
+            editingDomain = null;
+        }
+
+        async function saveModal() {
+            const payload = {
+                name: document.getElementById('field-name').value.trim(),
+                display_name: document.getElementById('field-display_name').value.trim(),
+                short_code: document.getElementById('field-short_code').value.trim(),
+                color: document.getElementById('field-color').value.trim(),
+                owner: document.getElementById('field-owner').value.trim(),
+                tech_custodian: document.getElementById('field-tech_custodian').value.trim(),
+                business_steward: document.getElementById('field-business_steward').value.trim(),
+                data_category: document.getElementById('field-data_category').value.trim(),
+                confidentiality: document.getElementById('field-confidentiality').value,
+                pii: document.getElementById('field-pii').value === 'true',
+                help_channel: document.getElementById('field-help_channel').value.trim(),
+                wiki_link: document.getElementById('field-wiki_link').value.trim(),
+                notes: document.getElementById('field-notes').value.trim(),
+            };
+
+            if (!payload.name) {
+                showToast('Domain name is required', 'error');
+                return;
+            }
+
+            try {
+                if (editingDomain) {
+                    await fetchJSON(`${API_BASE}/${editingDomain}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Domain updated', 'success');
+                } else {
+                    await fetchJSON(API_BASE, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Domain created', 'success');
+                }
+
+                closeModal();
+                loadDomains();
+            } catch (e) {
+                showToast('Failed: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteDomain(name) {
+            if (!confirm(`Delete domain "${name}"?\n\nThis will only remove the domain configuration, not associated monikers.`)) {
+                return;
+            }
+
+            try {
+                await fetchJSON(`${API_BASE}/${name}`, { method: 'DELETE' });
+                showToast('Domain deleted', 'success');
+                loadDomains();
+            } catch (e) {
+                showToast('Failed to delete: ' + e.message, 'error');
+            }
+        }
+
+        async function saveDomains() {
+            try {
+                const data = await fetchJSON(`${API_BASE}/save`, { method: 'POST' });
+                showToast(data.message, 'success');
+            } catch (e) {
+                showToast('Failed to save: ' + e.message, 'error');
+            }
+        }
+
+        async function reloadDomains() {
+            if (!confirm('Reload domains from YAML file? Any unsaved changes will be lost.')) {
+                return;
+            }
+
+            try {
+                const data = await fetchJSON(`${API_BASE}/reload`, { method: 'POST' });
+                showToast(data.message, 'success');
+                loadDomains();
+            } catch (e) {
+                showToast('Failed to reload: ' + e.message, 'error');
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Color picker sync
+        document.getElementById('field-color-picker').addEventListener('input', e => {
+            document.getElementById('field-color').value = e.target.value;
+        });
+        document.getElementById('field-color').addEventListener('input', e => {
+            const val = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                document.getElementById('field-color-picker').value = val;
+            }
+        });
+
+        // Close modal on overlay click
+        document.getElementById('modal-overlay').addEventListener('click', e => {
+            if (e.target.id === 'modal-overlay') closeModal();
+        });
+
+        // Initialize
+        loadDomains();
+    </script>
+</body>
+</html>

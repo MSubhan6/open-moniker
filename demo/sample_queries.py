@@ -363,24 +363,77 @@ def option_14_list_domains():
                 print(f"  {i:2}. {colorize_path(domain)}")
 
 
-def option_15_domain_metadata_1():
-    """Domain Metadata - Analytics"""
-    header("15. Domain Metadata - Analytics")
-    moniker = "analytics"
-    print(f"\nFull metadata for '{colorize_path(moniker)}' domain:\n")
-    result = fetch(f"/describe/{moniker}")
+def option_15_configure_domains():
+    """Configure Domains - View and manage data domains"""
+    header("15. Configure Domains")
+    print("\nData domains are top-level organizational units with governance metadata.\n")
+    result = fetch("/domains")
     if result:
-        print_json(result)
+        domains = result.get('domains', [])
+        print(f"  Found {C.GREEN}{len(domains)}{C.RESET} configured domains:\n")
+
+        for d in domains:
+            color_dot = f"{C.BOLD}●{C.RESET}"  # Placeholder for color
+            conf_badge = ""
+            if d.get('confidentiality') in ('confidential', 'strictly_confidential'):
+                conf_badge = f" [{C.RED}{d['confidentiality'].upper()}{C.RESET}]"
+            pii_badge = f" [{C.RED}PII{C.RESET}]" if d.get('pii') else ""
+
+            print(f"  {color_dot} {colorize_path(d['name']):15} {d.get('short_code', ''):5} - {d.get('display_name', '')}{conf_badge}{pii_badge}")
+            if d.get('owner'):
+                print(f"      Owner: {C.GREEN}{d['owner']}{C.RESET}")
+
+        print(f"\n  {C.BOLD}Domain Config UI:{C.RESET} {C.CYAN}http://localhost:8050/domains/ui{C.RESET}")
+        print(f"  {C.BOLD}API Endpoints:{C.RESET}")
+        print(f"    GET  /domains        - List all domains")
+        print(f"    GET  /domains/{{name}} - Get domain details")
+        print(f"    POST /domains        - Create domain")
+        print(f"    PUT  /domains/{{name}} - Update domain")
+        print(f"    POST /domains/save   - Save to YAML")
 
 
-def option_16_domain_metadata_2():
-    """Domain Metadata - Reference Data"""
-    header("16. Domain Metadata - Reference Data")
-    moniker = "reference"
-    print(f"\nFull metadata for '{colorize_path(moniker)}' domain:\n")
-    result = fetch(f"/describe/{moniker}")
+def option_16_view_domain():
+    """View Domain - Show governance metadata for a specific domain"""
+    header("16. View Domain Governance")
+    domain_name = "indices"  # Default to indices, could prompt user
+    print(f"\nViewing governance metadata for '{colorize_path(domain_name)}' domain:\n")
+    result = fetch(f"/domains/{domain_name}")
     if result:
-        print_json(result)
+        domain = result.get('domain', {})
+        monikers = result.get('moniker_paths', [])
+
+        print(f"  {C.BOLD}Domain:{C.RESET} {domain.get('name')}")
+        print(f"  {C.BOLD}Display Name:{C.RESET} {domain.get('display_name')}")
+        print(f"  {C.BOLD}Short Code:{C.RESET} {domain.get('short_code')}")
+        print(f"  {C.BOLD}Color:{C.RESET} {domain.get('color')}")
+
+        print(f"\n  {C.BOLD}Governance:{C.RESET}")
+        print(f"    Owner:           {C.GREEN}{domain.get('owner')}{C.RESET}")
+        print(f"    Tech Custodian:  {domain.get('tech_custodian')}")
+        print(f"    Business Steward: {domain.get('business_steward')}")
+
+        print(f"\n  {C.BOLD}Classification:{C.RESET}")
+        print(f"    Data Category:   {domain.get('data_category')}")
+        conf = domain.get('confidentiality', 'internal')
+        conf_color = C.RED if conf in ('confidential', 'strictly_confidential') else C.YELLOW
+        print(f"    Confidentiality: {conf_color}{conf}{C.RESET}")
+        pii = domain.get('pii', False)
+        pii_color = C.RED if pii else C.GREEN
+        print(f"    Contains PII:    {pii_color}{'Yes' if pii else 'No'}{C.RESET}")
+
+        print(f"\n  {C.BOLD}Support:{C.RESET}")
+        print(f"    Help Channel:    {domain.get('help_channel')}")
+        print(f"    Wiki Link:       {domain.get('wiki_link')}")
+
+        if domain.get('notes'):
+            print(f"\n  {C.BOLD}Notes:{C.RESET} {domain.get('notes')}")
+
+        if monikers:
+            print(f"\n  {C.BOLD}Moniker Paths ({len(monikers)}):{C.RESET}")
+            for m in monikers[:5]:
+                print(f"    - {colorize_path(m)}")
+            if len(monikers) > 5:
+                print(f"    ... and {len(monikers) - 5} more")
 
 
 def option_17_list_mappings():
@@ -440,8 +493,10 @@ def option_space():
     {C.PURPLE}Purple{C.RESET}        - Tenors (KRD12Y, 5Y, 3M)
 
   {C.BOLD}URLs:{C.RESET}
-    Config UI: {C.CYAN}http://localhost:8050/config/ui{C.RESET}
-    API Docs:  {C.CYAN}http://localhost:8050/docs{C.RESET}
+    Catalog UI:   {C.CYAN}http://localhost:8050/ui{C.RESET}
+    Config UI:    {C.CYAN}http://localhost:8050/config/ui{C.RESET}
+    Domains UI:   {C.CYAN}http://localhost:8050/domains/ui{C.RESET}
+    Swagger/API:  {C.CYAN}http://localhost:8050/docs{C.RESET}
 """)
 
 
@@ -474,8 +529,10 @@ MENU = f"""
   {C.GRAY}--- Batch & Catalog ---{C.RESET}
   {C.BOLD}13.{C.RESET} Batch Validate - Multiple monikers
   {C.BOLD}14.{C.RESET} List Data Domains
-  {C.BOLD}15.{C.RESET} Domain Metadata {C.ORANGE}analytics{C.RESET}
-  {C.BOLD}16.{C.RESET} Domain Metadata {C.ORANGE}reference{C.RESET}
+
+  {C.GRAY}--- Domain Configuration ---{C.RESET}
+  {C.BOLD}15.{C.RESET} Configure Domains - View/manage governance
+  {C.BOLD}16.{C.RESET} View Domain {C.ORANGE}indices{C.RESET} - Governance details
   {C.BOLD}17.{C.RESET} List Full Mapping
 
   {C.BOLD}SPACE{C.RESET} - Service Info    {C.BOLD}Q{C.RESET} - Quit
@@ -497,8 +554,8 @@ OPTIONS = {
     '12': option_12_tree,
     '13': option_13_batch_validate,
     '14': option_14_list_domains,
-    '15': option_15_domain_metadata_1,
-    '16': option_16_domain_metadata_2,
+    '15': option_15_configure_domains,
+    '16': option_16_view_domain,
     '17': option_17_list_mappings,
     ' ': option_space,
 }

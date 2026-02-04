@@ -40,9 +40,14 @@ from .telemetry.sinks.file import RotatingFileSink
 from .telemetry.sinks.zmq import ZmqSink
 from .sql_catalog import routes as sql_catalog_routes
 from .config_ui import routes as config_ui_routes
+from .domains import routes as domain_routes
+from .domains import DomainRegistry, load_domains_from_yaml
 
 
 logger = logging.getLogger(__name__)
+
+# Domain registry - global singleton
+_domain_registry: DomainRegistry | None = None
 
 
 # Response models
@@ -642,6 +647,23 @@ async def lifespan(app: FastAPI):
         )
         logger.info(f"Config UI enabled (yaml_output_path={config.config_ui.yaml_output_path})")
 
+    # Initialize Domain Configuration
+    global _domain_registry
+    _domain_registry = DomainRegistry()
+    domains_yaml_path = os.environ.get("DOMAINS_CONFIG", "domains.yaml")
+    if Path(domains_yaml_path).exists():
+        domains = load_domains_from_yaml(domains_yaml_path, _domain_registry)
+        logger.info(f"Loaded {len(domains)} domains from {domains_yaml_path}")
+    else:
+        logger.info(f"No domains config found at {domains_yaml_path}, starting with empty registry")
+
+    domain_routes.configure(
+        domain_registry=_domain_registry,
+        catalog_registry=catalog,
+        domains_yaml_path=domains_yaml_path,
+    )
+    logger.info("Domain configuration enabled")
+
     logger.info("Moniker resolution service started")
 
     yield
@@ -669,19 +691,50 @@ async def lifespan(app: FastAPI):
     logger.info("Moniker resolution service stopped")
 
 
-# Create FastAPI app
+# Create FastAPI app with enhanced OpenAPI documentation
 app = FastAPI(
     title="Moniker Resolution Service",
-    description="Resolves monikers to source connection info. Does NOT proxy data - clients connect directly to sources.",
-    version="0.1.0",
+    description="""
+## Overview
+
+Resolves monikers (semantic data paths) to source connection info.
+
+## Key Concepts
+
+- **Domains**: Top-level organizational units (indices, commodities, reference, etc.) with governance metadata
+- **Monikers**: Hierarchical paths to data assets (e.g., `indices/equity/sp500`)
+- **Resolution**: Maps monikers to connection parameters and query templates
+
+## Execution Models
+
+- **Client-side** (`/resolve`): Returns connection info for direct client execution
+- **Server-side** (`/fetch`): Executes queries and returns data directly
+
+## Documentation
+
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+- OpenAPI JSON: `/openapi.json`
+    """,
+    version="0.2.0",
+    contact={"name": "Data Platform Team"},
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "Resolution", "description": "Resolve monikers to connection info for client-side execution"},
+        {"name": "Data Fetch", "description": "Server-side data retrieval and metadata"},
+        {"name": "Catalog", "description": "Browse and explore the moniker catalog"},
+        {"name": "Domains", "description": "Domain governance and configuration"},
+        {"name": "SQL Catalog", "description": "SQL statement discovery and cataloging"},
+        {"name": "Config", "description": "Catalog configuration management"},
+        {"name": "Telemetry", "description": "Access tracking and reporting"},
+        {"name": "Health", "description": "Service health and diagnostics"},
+    ],
 )
 
-# Mount SQL Catalog router
+# Mount routers
 app.include_router(sql_catalog_routes.router)
-
-# Mount Config UI router
 app.include_router(config_ui_routes.router)
+app.include_router(domain_routes.router)
 
 
 @app.exception_handler(MonikerParseError)
@@ -721,9 +774,9 @@ async def resolution_error_handler(request: Request, exc: ResolutionError):
     )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health():
-    """Health check endpoint."""
+    """Health check endpoint with telemetry and cache statistics."""
     return HealthResponse(
         status="healthy",
         telemetry=_service.telemetry.stats if _service else {},
@@ -731,7 +784,7 @@ async def health():
     )
 
 
-@app.get("/resolve/{path:path}", response_model=ResolveResponse)
+@app.get("/resolve/{path:path}", response_model=ResolveResponse, tags=["Resolution"])
 async def resolve_moniker(
     request: Request,
     path: str,
@@ -741,12 +794,12 @@ async def resolve_moniker(
     Resolve a moniker to source connection info.
 
     Returns everything the client needs to connect directly to the data source:
-    - source_type: snowflake, oracle, rest, bloomberg, etc.
-    - connection: Connection parameters
-    - query: SQL query or path to fetch
-    - ownership: Who owns this data
+    - **source_type**: snowflake, oracle, rest, bloomberg, etc.
+    - **connection**: Connection parameters (account, warehouse, etc.)
+    - **query**: SQL query or API path to execute
+    - **ownership**: Who owns this data
 
-    The client then connects directly to the source - we don't proxy data.
+    The client then connects directly to the source - this service does NOT proxy data.
     """
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
@@ -789,12 +842,12 @@ async def resolve_moniker(
     )
 
 
-@app.get("/list/{path:path}", response_model=ListResponse)
+@app.get("/list/{path:path}", response_model=ListResponse, tags=["Catalog"])
 async def list_children(
     path: str = "",
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)] = None,
 ):
-    """List children of a moniker path (from catalog)."""
+    """List children of a moniker path in the catalog hierarchy."""
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
@@ -808,12 +861,12 @@ async def list_children(
     )
 
 
-@app.get("/describe/{path:path}", response_model=DescribeResponse)
+@app.get("/describe/{path:path}", response_model=DescribeResponse, tags=["Resolution"])
 async def describe_moniker(
     path: str,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
 ):
-    """Get metadata about a moniker path (ownership, classification, etc.)."""
+    """Get metadata about a moniker path including ownership, classification, and data quality info."""
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
@@ -920,12 +973,12 @@ async def describe_moniker(
     )
 
 
-@app.get("/lineage/{path:path}", response_model=LineageResponse)
+@app.get("/lineage/{path:path}", response_model=LineageResponse, tags=["Resolution"])
 async def get_lineage(
     path: str,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
 ):
-    """Get full ownership lineage for a moniker path."""
+    """Get full ownership lineage for a moniker path showing inheritance chain."""
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
@@ -935,7 +988,7 @@ async def get_lineage(
     return LineageResponse(**result)
 
 
-@app.post("/telemetry/access")
+@app.post("/telemetry/access", tags=["Telemetry"])
 async def report_access(
     report: AccessReport,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
@@ -943,7 +996,7 @@ async def report_access(
     """
     Client reports access telemetry after fetching data.
 
-    This allows us to track actual data access, not just resolutions.
+    This allows tracking actual data access patterns, not just resolutions.
     """
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
@@ -969,9 +1022,9 @@ async def report_access(
     return {"status": "recorded"}
 
 
-@app.get("/catalog")
+@app.get("/catalog", tags=["Catalog"])
 async def list_catalog():
-    """List all registered catalog paths."""
+    """List all registered catalog paths in the moniker hierarchy."""
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
@@ -983,7 +1036,7 @@ async def list_catalog():
 # DATA FETCH ENDPOINTS - Server-side query execution
 # =============================================================================
 
-@app.get("/fetch/{path:path}", response_model=FetchResponse)
+@app.get("/fetch/{path:path}", response_model=FetchResponse, tags=["Data Fetch"])
 async def fetch_data(
     path: str,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
@@ -992,10 +1045,10 @@ async def fetch_data(
     """
     Fetch actual data by executing the query server-side.
 
-    Unlike /resolve which returns connection info for client-side execution,
+    Unlike `/resolve` which returns connection info for client-side execution,
     this endpoint executes the query and returns the data directly.
 
-    Use this for:
+    **Use cases:**
     - Small datasets where direct fetch is convenient
     - AI agents that need data without managing connections
     - Demos and exploration
@@ -1067,7 +1120,7 @@ async def fetch_data(
     )
 
 
-@app.get("/metadata/{path:path}", response_model=MetadataResponse)
+@app.get("/metadata/{path:path}", response_model=MetadataResponse, tags=["Data Fetch"])
 async def get_metadata(
     path: str,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
@@ -1078,13 +1131,13 @@ async def get_metadata(
     Get rich metadata for AI/agent discoverability.
 
     Returns comprehensive information about a data source including:
-    - Data profile (row counts, cardinality estimates)
-    - Temporal coverage (date ranges, freshness)
-    - Relationships (upstream/downstream dependencies)
-    - Schema with semantic annotations
-    - Query patterns and cost indicators
-    - Sample data (optional)
-    - Natural language descriptions for AI understanding
+    - **Data profile**: Row counts, cardinality estimates
+    - **Temporal coverage**: Date ranges, freshness indicators
+    - **Relationships**: Upstream/downstream dependencies
+    - **Schema**: Column definitions with semantic annotations
+    - **Query patterns**: Cost indicators and optimization hints
+    - **Sample data**: Optional preview rows
+    - **Descriptions**: Natural language descriptions for AI understanding
 
     This endpoint is optimized for machine discovery and AI agents.
     """
@@ -1250,7 +1303,7 @@ async def get_metadata(
     )
 
 
-@app.get("/sample/{path:path}", response_model=SampleDataResponse)
+@app.get("/sample/{path:path}", response_model=SampleDataResponse, tags=["Data Fetch"])
 async def get_sample_data(
     path: str,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
@@ -1259,8 +1312,8 @@ async def get_sample_data(
     """
     Get sample rows from a data source.
 
-    Convenience endpoint for quickly understanding data structure.
-    Returns a small sample of actual data.
+    Convenience endpoint for quickly understanding data structure and content.
+    Returns a small sample of actual data with column information.
     """
     result = await fetch_data(path, caller, limit=limit)
 
@@ -1273,7 +1326,7 @@ async def get_sample_data(
     )
 
 
-@app.get("/tree/{path:path}", response_model=TreeNodeResponse)
+@app.get("/tree/{path:path}", response_model=TreeNodeResponse, tags=["Catalog"])
 async def get_tree(
     path: str,
     depth: int | None = Query(default=None, description="Maximum depth to traverse"),
@@ -1282,7 +1335,7 @@ async def get_tree(
     Get the catalog tree structure starting from a path.
 
     Returns a hierarchical view of the catalog with metadata at each node.
-    Useful for understanding the available data domains and their organization.
+    Useful for understanding available data domains and their organization.
     """
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
@@ -1349,14 +1402,14 @@ async def get_tree(
     return tree
 
 
-@app.get("/tree", response_model=list[TreeNodeResponse])
+@app.get("/tree", response_model=list[TreeNodeResponse], tags=["Catalog"])
 async def get_tree_root(
     depth: int | None = Query(default=None, description="Maximum depth to traverse"),
 ):
     """
     Get the catalog tree structure from the root.
 
-    Returns all top-level domains with their hierarchical structure.
+    Returns all top-level domains with their hierarchical structure and metadata.
     """
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
@@ -1426,13 +1479,18 @@ async def get_tree_root(
     return trees
 
 
-@app.get("/")
+@app.get("/", tags=["Health"])
 async def root():
-    """Root endpoint with service info."""
+    """Root endpoint with service info and available endpoints."""
     return {
         "service": "Moniker Resolution Service",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "description": "Resolves monikers to source connection info. Also provides server-side fetch for convenience.",
+        "documentation": {
+            "/docs": "Swagger UI",
+            "/redoc": "ReDoc documentation",
+            "/openapi.json": "OpenAPI schema",
+        },
         "endpoints": {
             # Resolution endpoints (client executes query)
             "/resolve/{path}": "Resolve moniker to source connection info (client executes)",
@@ -1445,6 +1503,9 @@ async def root():
             "/fetch/{path}": "Fetch data (server executes query, returns data)",
             "/sample/{path}": "Get sample rows from a data source",
             "/metadata/{path}": "Rich metadata for AI/agent discoverability",
+            # Domains
+            "/domains": "List and manage data domains",
+            "/domains/ui": "Domain configuration UI",
             # Catalog and telemetry
             "/catalog": "List all catalog paths",
             "/telemetry/access": "POST - Report access telemetry from client",
@@ -1785,7 +1846,7 @@ _UI_HTML = """
 """
 
 
-@app.get("/ui", response_class=HTMLResponse)
+@app.get("/ui", response_class=HTMLResponse, tags=["Catalog"])
 async def ui():
     """Simple web UI for browsing the moniker catalog."""
     return _UI_HTML
