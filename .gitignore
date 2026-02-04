@@ -52,10 +52,11 @@ logs/
 .env
 .env.local
 
-# Local config files (copy from *.sample.yaml)
+# Local config files (copy from *.sample.yaml or sample_*.yaml)
 config.yaml
 config_zmq.yaml
 catalog.yaml
+domains.yaml
 
 # OS
 .DS_Store
