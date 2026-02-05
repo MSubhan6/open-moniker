@@ -57,6 +57,7 @@ def colorize_path(path: str) -> str:
     """Colorize a moniker path with semantic highlighting."""
     parts = re.split(r'([/@.])', path)
     result = []
+    seen_first_segment = False
 
     date_pattern = re.compile(r'^@?\d{8}$')
     tenor_pattern = re.compile(r'^(KRD|DV01|CR01)?\d*[YMWD]$|^KRD\d+[YMWD]?$', re.IGNORECASE)
@@ -65,10 +66,6 @@ def colorize_path(path: str) -> str:
                        'portfolio', 'fund', 'account', 'ISIN', 'CUSIP', 'SEDOL',
                        'equity', 'bond', 'fx', 'rates', 'credit', 'commodity', 'bitcoin',
                        'currencies'}
-    domain_keywords = {'prices', 'analytics', 'reference', 'holdings', 'indices', 'index',
-                       'commodities', 'commods', 'instruments', 'reports', 'risk', 'security',
-                       'sovereign', 'derivatives', 'calendars', 'regulatory', 'var', 'views',
-                       'global', 'futures', 'digital', 'gov', 'securities', 'spm', 'position'}
     subresource_keywords = {'details', 'history', 'metadata', 'schema', 'audit', 'corporate', 'actions'}
 
     for part in parts:
@@ -76,6 +73,10 @@ def colorize_path(path: str) -> str:
             continue
         elif part in '/@.':
             result.append(C.GRAY + part + C.RESET)
+        elif not seen_first_segment and part not in '/@.':
+            # First segment (top-level domain) is always yellow
+            result.append(C.YELLOW + part + C.RESET)
+            seen_first_segment = True
         elif keyword_pattern.match(part):
             result.append(C.RED + C.BOLD + part + C.RESET)
         elif date_pattern.match(part):
@@ -86,8 +87,6 @@ def colorize_path(path: str) -> str:
             result.append(C.CYAN + part + C.RESET)
         elif part.upper() in business_fields or part in business_fields:
             result.append(C.GREEN + part + C.RESET)
-        elif part.lower() in domain_keywords:
-            result.append(C.ORANGE + part + C.RESET)
         elif part.startswith('US') and len(part) > 8:
             result.append(C.GREEN + part + C.RESET)
         else:
