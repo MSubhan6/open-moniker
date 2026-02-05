@@ -333,14 +333,18 @@ async def save_to_yaml():
     catalog_dict = serializer.serialize_catalog(nodes)
 
     # Write to the same file we loaded from (catalog.yaml), not catalog_output.yaml
-    # DEBUG: Log which files we're considering
-    logger.info(f"Save: _catalog_definition_file={_catalog_definition_file}, _yaml_output_path={_yaml_output_path}")
+    print(f"[SAVE] _catalog_definition_file={_catalog_definition_file}")
+    print(f"[SAVE] _yaml_output_path={_yaml_output_path}")
     output_path = Path(_catalog_definition_file or _yaml_output_path)
+    abs_path = output_path.absolute()
+    print(f"[SAVE] Writing {len(nodes)} nodes to: {abs_path}")
+    print(f"[SAVE] Node paths: {[n.path for n in nodes]}")
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             yaml.dump(catalog_dict, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
-        logger.info(f"Saved catalog to {output_path.absolute()} ({len(nodes)} nodes)")
+        print(f"[SAVE] SUCCESS - wrote to {abs_path}")
+        logger.info(f"Saved catalog to {abs_path} ({len(nodes)} nodes)")
 
         return SaveResponse(
             success=True,
