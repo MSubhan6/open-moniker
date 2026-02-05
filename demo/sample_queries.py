@@ -49,14 +49,17 @@ def colorize_path(path: str) -> str:
 
     # Patterns
     date_pattern = re.compile(r'^@?\d{8}$')  # @20260101 or 20260101
-    tenor_pattern = re.compile(r'^(KRD|DV01|CR01)?\d*[YMD]$|^KRD\d+[YMD]?$', re.IGNORECASE)
+    tenor_pattern = re.compile(r'^(KRD|DV01|CR01)?\d*[YMWD]$|^KRD\d+[YMWD]?$', re.IGNORECASE)
     keyword_pattern = re.compile(r'^(ALL|LATEST|ANY)$', re.IGNORECASE)
-    business_fields = {'AAPL', 'MSFT', 'GOOG', 'TSLA', 'ETH', 'BTC', 'EUR', 'USD', 'GBP',
+    business_fields = {'AAPL', 'MSFT', 'GOOG', 'TSLA', 'ETH', 'BTC', 'EUR', 'USD', 'GBP', 'DKK',
                        'portfolio', 'fund', 'account', 'ISIN', 'CUSIP', 'SEDOL',
-                       'equity', 'bond', 'fx', 'rates', 'credit', 'commodity'}
-    domain_keywords = {'prices', 'analytics', 'reference', 'holdings', 'indices',
-                       'commodities', 'instruments', 'reports', 'risk', 'security',
-                       'sovereign', 'derivatives', 'calendars', 'regulatory', 'var', 'views'}
+                       'equity', 'bond', 'fx', 'rates', 'credit', 'commodity', 'bitcoin'}
+    domain_keywords = {'prices', 'analytics', 'reference', 'holdings', 'indices', 'index',
+                       'commodities', 'commods', 'instruments', 'reports', 'risk', 'security',
+                       'sovereign', 'derivatives', 'calendars', 'regulatory', 'var', 'views',
+                       'global', 'futures', 'digital', 'gov', 'securities'}
+    # Sub-resource keywords (paths after @version)
+    subresource_keywords = {'details', 'history', 'metadata', 'schema', 'audit', 'corporate', 'actions'}
 
     for part in parts:
         if not part:
@@ -69,6 +72,8 @@ def colorize_path(path: str) -> str:
             result.append(C.BLUE + part + C.RESET)
         elif tenor_pattern.match(part):
             result.append(C.PURPLE + part + C.RESET)
+        elif part.lower() in subresource_keywords:
+            result.append(C.CYAN + part + C.RESET)
         elif part.upper() in business_fields or part in business_fields:
             result.append(C.GREEN + part + C.RESET)
         elif part.lower() in domain_keywords:
@@ -464,6 +469,92 @@ def option_17_list_mappings():
                     print(f"    -> {colorize_path(path)}")
 
 
+def option_18_complex_index():
+    """Complex Index - Multi-segment hierarchy"""
+    header("18. Complex Index - Bloomberg Global Treasury")
+    moniker = "index.global/BBGGlobalAggTreasury/GBP/MWS_LIBOR"
+    print(f"\nResolving: {colorize_moniker('moniker://' + moniker)}")
+    print("Multi-segment path: index family / currency / benchmark\n")
+    result = fetch(f"/resolve/{moniker}")
+    if result:
+        print(f"  Source Type: {C.ORANGE}{result['source_type']}{C.RESET}")
+        print(f"  Binding Path: {colorize_path(result['binding_path'])}")
+    else:
+        print(f"\n  {C.GRAY}(No binding - this is an example complex path structure){C.RESET}")
+        print(f"  Path segments: index.global / BBGGlobalAggTreasury / GBP / MWS_LIBOR")
+        print(f"  Use case: Global treasury indices with currency and benchmark type")
+
+
+def option_19_gov_rates():
+    """Government Rates - Danish Bond with KRD"""
+    header("19. Government Rates - Danish Bond KRD")
+    moniker = "rates.gov/DKK/DK0.125Mar2026/KRD/KRD12Y"
+    print(f"\nResolving: {colorize_moniker('moniker://' + moniker)}")
+    print("Path includes: currency / bond ID (opaque) / risk type / tenor\n")
+    result = fetch(f"/resolve/{moniker}")
+    if result:
+        print(f"  Source Type: {C.ORANGE}{result['source_type']}{C.RESET}")
+        print(f"  Binding Path: {colorize_path(result['binding_path'])}")
+    else:
+        print(f"\n  {C.GRAY}(No binding - this shows opaque segment handling){C.RESET}")
+        print(f"  Segments:")
+        print(f"    [0] {C.GREEN}DKK{C.RESET}            - Currency")
+        print(f"    [1] DK0.125Mar2026  - Bond ID (opaque, includes coupon & maturity)")
+        print(f"    [2] KRD             - Risk type (Key Rate Duration)")
+        print(f"    [3] {C.PURPLE}KRD12Y{C.RESET}         - Tenor (12-year KRD)")
+
+
+def option_20_versioned_subresource():
+    """Versioned Sub-resource - Security details at specific date"""
+    header("20. Versioned Sub-resource - Security Details")
+    examples = [
+        ("securities/012345678@20260101/details", "Single sub-resource"),
+        ("securities/012345678@20260101/details.corporate.actions", "Multi-level sub-resource"),
+    ]
+
+    for moniker, desc in examples:
+        print(f"\n  {C.BOLD}{desc}:{C.RESET}")
+        print(f"  Parsing: {colorize_moniker('moniker://' + moniker)}")
+
+        # Parse locally to show components
+        result = fetch(f"/describe/{moniker.split('@')[0]}")
+        print(f"    Path: securities/012345678")
+        print(f"    Version: {C.BLUE}20260101{C.RESET} (type: DATE)")
+        sub = moniker.split('/')[-1] if '/' in moniker.split('@')[1] else None
+        if sub:
+            print(f"    Sub-resource: {C.CYAN}{sub}{C.RESET}")
+
+    print(f"\n  {C.GRAY}Use case: Point-in-time views of security data with specific projections{C.RESET}")
+
+
+def option_21_temporal_versions():
+    """Temporal Version Types - Different version semantics"""
+    header("21. Temporal Version Types")
+    print(f"\n  The {C.BOLD}@version{C.RESET} suffix supports multiple semantic types:\n")
+
+    examples = [
+        ("prices.equity/AAPL@20260115", "DATE", "Specific date (YYYYMMDD)"),
+        ("prices.equity/AAPL@latest", "LATEST", "Most recent available data"),
+        ("rates.swap/USD/10Y@3M", "TENOR", "Three months lookback"),
+        ("risk.cvar/portfolio-123@all", "ALL", "Full time series"),
+    ]
+
+    for moniker, vtype, desc in examples:
+        color = {
+            "DATE": C.BLUE,
+            "LATEST": C.RED + C.BOLD,
+            "TENOR": C.PURPLE,
+            "ALL": C.RED + C.BOLD,
+        }.get(vtype, C.WHITE)
+
+        print(f"  {colorize_moniker('moniker://' + moniker)}")
+        print(f"    Type: {color}{vtype}{C.RESET} - {desc}")
+        print()
+
+    print(f"  {C.GRAY}Version type determines how the source interprets the temporal filter.{C.RESET}")
+    print(f"  {C.GRAY}Template placeholders: {{version_type}}, {{is_date}}, {{is_tenor}}, {{tenor_value}}, {{tenor_unit}}{C.RESET}")
+
+
 def option_space():
     """Space info"""
     header("Moniker Service Info")
@@ -535,6 +626,12 @@ MENU = f"""
   {C.BOLD}16.{C.RESET} View Domain {C.ORANGE}indices{C.RESET} - Governance details
   {C.BOLD}17.{C.RESET} List Full Mapping
 
+  {C.GRAY}--- Complex Moniker Patterns ---{C.RESET}
+  {C.BOLD}18.{C.RESET} Complex Index {C.ORANGE}index{C.RESET}.{C.ORANGE}global{C.RESET}/BBGGlobalAggTreasury/{C.GREEN}GBP{C.RESET}/MWS_LIBOR
+  {C.BOLD}19.{C.RESET} Gov Rates {C.ORANGE}rates{C.RESET}.{C.ORANGE}gov{C.RESET}/{C.GREEN}DKK{C.RESET}/DK0.125Mar2026/KRD/{C.PURPLE}KRD12Y{C.RESET}
+  {C.BOLD}20.{C.RESET} Versioned Sub-resource {C.ORANGE}securities{C.RESET}/ID{C.GRAY}@{C.RESET}{C.BLUE}20260101{C.RESET}/{C.CYAN}details{C.RESET}
+  {C.BOLD}21.{C.RESET} Temporal Versions ({C.BLUE}@date{C.RESET}, {C.RED}{C.BOLD}@latest{C.RESET}, {C.PURPLE}@3M{C.RESET}, {C.RED}{C.BOLD}@all{C.RESET})
+
   {C.BOLD}SPACE{C.RESET} - Service Info    {C.BOLD}Q{C.RESET} - Quit
 """
 
@@ -557,6 +654,10 @@ OPTIONS = {
     '15': option_15_configure_domains,
     '16': option_16_view_domain,
     '17': option_17_list_mappings,
+    '18': option_18_complex_index,
+    '19': option_19_gov_rates,
+    '20': option_20_versioned_subresource,
+    '21': option_21_temporal_versions,
     ' ': option_space,
 }
 

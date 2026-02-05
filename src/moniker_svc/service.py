@@ -22,7 +22,7 @@ from .catalog.registry import CatalogRegistry
 from .catalog.types import CatalogNode, ResolvedOwnership, SourceBinding
 from .config import Config
 from .moniker.parser import parse_moniker, MonikerParseError
-from .moniker.types import Moniker
+from .moniker.types import Moniker, VersionType
 from .telemetry.emitter import TelemetryEmitter
 from .telemetry.events import UsageEvent, CallerIdentity, EventOutcome, Operation
 
@@ -270,6 +270,16 @@ class MonikerService:
                 {revision}          - Revision from /vN suffix
                 {namespace}         - Namespace prefix if provided
                 {moniker}           - Full moniker string
+                {sub_resource}      - Sub-resource path after @version (e.g., "details.corporate.actions")
+
+            Version type placeholders:
+                {version_type}      - Semantic type: "date", "latest", "tenor", "all", "custom", or ""
+                {is_date}           - "true" if version is a date (YYYYMMDD), else "false"
+                {is_latest}         - "true" if version is "latest", else "false"
+                {is_tenor}          - "true" if version is a tenor (3M, 12Y), else "false"
+                {is_all}            - "true" if version is "all", else "false"
+                {tenor_value}       - Numeric part of tenor (e.g., "3" from "3M"), or ""
+                {tenor_unit}        - Unit part of tenor (Y/M/W/D), or ""
 
             SQL-translated values:
                 {version_date}      - SQL date expression for version
@@ -280,7 +290,6 @@ class MonikerService:
                                       "ALL" → "1=1" (match all)
                                       "AAPL" → "col = 'AAPL'"
                 {is_all[N]}         - "true" if segment N is "ALL", else "false"
-                {is_latest}         - "true" if version is "latest", else "false"
         """
         import re
 
@@ -305,6 +314,20 @@ class MonikerService:
         else:
             version_date = f"'{version}'"
 
+        # Compute version type flags
+        version_type = moniker.version_type
+        is_date = version_type == VersionType.DATE
+        is_latest = version_type == VersionType.LATEST
+        is_tenor = version_type == VersionType.TENOR
+        is_all_version = version_type == VersionType.ALL
+
+        # Extract tenor components if applicable
+        tenor_value = ""
+        tenor_unit = ""
+        if is_tenor and moniker.version_tenor:
+            tenor_value = str(moniker.version_tenor[0])
+            tenor_unit = moniker.version_tenor[1]
+
         # Build substitution dict
         subs = {
             "path": path,
@@ -313,7 +336,15 @@ class MonikerService:
             "revision": str(moniker.revision) if moniker.revision is not None else "",
             "namespace": moniker.namespace or "",
             "moniker": str(moniker),
-            "is_latest": "true" if version.lower() == "latest" else "false",
+            "sub_resource": moniker.sub_resource or "",
+            # Version type placeholders
+            "version_type": version_type.value if version_type else "",
+            "is_date": "true" if is_date else "false",
+            "is_latest": "true" if is_latest else "false",
+            "is_tenor": "true" if is_tenor else "false",
+            "is_all": "true" if is_all_version else "false",
+            "tenor_value": tenor_value,
+            "tenor_unit": tenor_unit,
         }
 
         result = template

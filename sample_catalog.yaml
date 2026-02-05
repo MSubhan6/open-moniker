@@ -1723,3 +1723,227 @@ mortgages.prepay:
       file_pattern: "{segments[0]}_{segments[1]}_prepay.xlsx"
       sheet: Projections
       header_row: 1
+
+
+# =============================================================================
+# COMPLEX MONIKER PATTERNS - Examples of advanced features
+# =============================================================================
+# This section demonstrates the enhanced moniker syntax:
+#   - Multi-segment hierarchies (4+ levels)
+#   - Version types: @date, @latest, @tenor (3M, 12Y), @all
+#   - Sub-resources after version: @version/details.corporate.actions
+#   - New template placeholders: {version_type}, {sub_resource}, {is_tenor}, etc.
+
+# -----------------------------------------------------------------------------
+# INDEX.GLOBAL - Bloomberg-style multi-segment indices
+# Pattern: index.global/{index_family}/{currency}/{benchmark}
+# Example: index.global/BBGGlobalAggTreasury/GBP/MWS_LIBOR
+# -----------------------------------------------------------------------------
+
+index:
+  display_name: Index Data
+  description: Multi-asset class index data and benchmarks
+  ownership:
+    accountable_owner: indices-governance@firm.com
+    data_specialist: quant-research@firm.com
+    support_channel: "#indices-support"
+
+index.global:
+  display_name: Global Indices
+  description: Multi-currency benchmark indices
+
+# 4-segment pattern: index family → currency → benchmark
+index.global/BBGGlobalAggTreasury:
+  display_name: Bloomberg Global Aggregate Treasury
+  description: Global treasury index by currency and benchmark
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: ANALYTICS_WH
+      database: INDICES
+      schema: GLOBAL
+      query: |
+        SELECT index_date, currency, benchmark_type, level, return_1d, return_mtd, yield
+        FROM GLOBAL_AGG_TREASURY
+        WHERE currency = '{segments[0]}'
+          AND benchmark_type = '{segments[1]}'
+          AND index_date = {version_date}
+
+# -----------------------------------------------------------------------------
+# RATES.GOV - Government rates with opaque bond identifiers
+# Pattern: rates.gov/{currency}/{bond_id}/{risk_type}/{tenor}
+# Example: rates.gov/DKK/DK0.125Mar2026/KRD/KRD12Y
+# Note: bond_id like "DK0.125Mar2026" is treated as opaque string
+# -----------------------------------------------------------------------------
+
+rates:
+  display_name: Rates Data
+  description: Interest rates, government bonds, and swaps
+  ownership:
+    accountable_owner: rates-desk@firm.com
+    data_specialist: rates-quant@firm.com
+    support_channel: "#rates-data"
+
+rates.gov:
+  display_name: Government Rates
+  description: Sovereign bond rates with key rate duration analytics
+
+# Deep hierarchy: currency → bond_id → risk_type → tenor
+rates.gov/DKK:
+  display_name: Danish Government Rates
+  description: Danish sovereign bonds and KRD analytics
+  source_binding:
+    type: rest
+    config:
+      base_url: https://rates-api.internal.firm.com
+      path_template: /v1/gov/DKK/{segments[0]}/{segments[1]}/{segments[2]}
+      method: GET
+      auth_type: bearer
+      # segments[0] = bond_id (opaque, e.g., DK0.125Mar2026)
+      # segments[1] = risk_type (KRD, DV01, etc.)
+      # segments[2] = tenor (KRD12Y, etc.)
+
+# -----------------------------------------------------------------------------
+# SECURITIES - Versioned data with sub-resources
+# Pattern: securities/{id}@{version}/{sub_resource}
+# Examples:
+#   securities/012345678@20260101/details
+#   securities/012345678@20260101/details.corporate.actions
+#   securities/012345678@latest/history
+# -----------------------------------------------------------------------------
+
+securities:
+  display_name: Security Data
+  description: Security master with point-in-time versioning and sub-resources
+  ownership:
+    accountable_owner: ref-data-governance@firm.com
+    data_specialist: ref-data-ops@firm.com
+    support_channel: "#securities-data"
+
+# Sub-resource: details
+securities/details:
+  display_name: Security Details
+  description: Full security attributes at a specific version date
+  source_binding:
+    type: rest
+    config:
+      base_url: https://secmaster-api.internal.firm.com
+      path_template: /v2/securities/{segments[0]}/details
+      query_params:
+        as_of: "{version}"
+        # {version_type} can be used for conditional logic
+
+# Sub-resource: details.corporate.actions (multi-level)
+securities/details.corporate.actions:
+  display_name: Corporate Actions
+  description: Security corporate action history
+  source_binding:
+    type: rest
+    config:
+      base_url: https://secmaster-api.internal.firm.com
+      path_template: /v2/securities/{segments[0]}/corporate-actions
+      query_params:
+        as_of: "{version}"
+
+# Sub-resource: history with temporal version support
+securities/history:
+  display_name: Security Change History
+  description: Full audit trail of security changes
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: ANALYTICS_WH
+      database: REFERENCE
+      schema: SECURITY_MASTER
+      query: |
+        SELECT security_id, change_type, old_value, new_value, effective_date, created_at
+        FROM SECURITY_HISTORY
+        WHERE security_id = '{segments[0]}'
+          AND CASE
+            WHEN '{is_all}' = 'true' THEN 1=1
+            WHEN '{is_latest}' = 'true' THEN effective_date = (
+              SELECT MAX(effective_date) FROM SECURITY_HISTORY WHERE security_id = '{segments[0]}'
+            )
+            ELSE effective_date = TO_DATE('{version}', 'YYYYMMDD')
+          END
+        ORDER BY effective_date DESC
+
+# -----------------------------------------------------------------------------
+# COMMODS.FUTURES - Digital assets with inline versioning
+# Pattern: commods.futures/{asset_class}/{instrument}[/VN]
+# Example: commods.futures/digital/bitcoin/V2
+# Note: /V2 is case-insensitive, normalized to /v2
+# -----------------------------------------------------------------------------
+
+commods:
+  display_name: Commodities
+  description: Commodity futures and digital assets
+  ownership:
+    accountable_owner: commodities-desk@firm.com
+
+commods.futures:
+  display_name: Commodity Futures
+  description: Futures and derivatives on commodities
+
+commods.futures/digital:
+  display_name: Digital Asset Futures
+  description: Cryptocurrency futures data
+
+commods.futures/digital/bitcoin:
+  display_name: Bitcoin Futures
+  description: BTC futures with schema versioning support
+  source_binding:
+    type: rest
+    config:
+      base_url: https://crypto-futures.internal.firm.com
+      # {revision} comes from /v2 suffix (normalized from /V2)
+      path_template: /api/v{revision}/futures/bitcoin
+      method: GET
+      auth_type: api_key
+      query_params:
+        schema: "{revision}"
+
+# -----------------------------------------------------------------------------
+# TEMPORAL VERSION EXAMPLES
+# Demonstrates: @date, @latest, @tenor, @all version types
+# Template placeholders: {version_type}, {is_date}, {is_tenor}, {tenor_value}, {tenor_unit}
+# -----------------------------------------------------------------------------
+
+# Tenor-based lookback example
+rates.swap:
+  display_name: Swap Rates
+  description: Interest rate swap curves with tenor-based lookback
+
+rates.swap/USD:
+  display_name: USD Swap Rates
+  description: US dollar swap curve
+  source_binding:
+    type: snowflake
+    config:
+      account: firm-prod.us-east-1
+      warehouse: ANALYTICS_WH
+      database: RATES
+      schema: SWAPS
+      query: |
+        SELECT trade_date, tenor, rate, spread, dv01
+        FROM USD_SWAP_CURVE
+        WHERE tenor = '{segments[0]}'
+          AND CASE
+            WHEN '{version_type}' = 'date' THEN trade_date = TO_DATE('{version}', 'YYYYMMDD')
+            WHEN '{version_type}' = 'latest' THEN trade_date = (SELECT MAX(trade_date) FROM USD_SWAP_CURVE)
+            WHEN '{version_type}' = 'tenor' THEN trade_date >= DATEADD(
+              CASE '{tenor_unit}'
+                WHEN 'Y' THEN 'YEAR'
+                WHEN 'M' THEN 'MONTH'
+                WHEN 'W' THEN 'WEEK'
+                WHEN 'D' THEN 'DAY'
+              END,
+              -{tenor_value},
+              CURRENT_DATE()
+            )
+            WHEN '{version_type}' = 'all' THEN 1=1
+            ELSE trade_date = CURRENT_DATE()
+          END
+        ORDER BY trade_date DESC

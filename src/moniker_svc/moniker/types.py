@@ -2,8 +2,27 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
+
+
+class VersionType(Enum):
+    """Semantic type of a version specifier.
+
+    Examples:
+        @20260101 -> DATE
+        @latest -> LATEST
+        @3M, @12Y, @1W -> TENOR
+        @all -> ALL
+        @anything_else -> CUSTOM
+    """
+    DATE = "date"       # @20260101 (YYYYMMDD format)
+    LATEST = "latest"   # @latest
+    TENOR = "tenor"     # @3M, @12Y, @1W, @5D (duration)
+    ALL = "all"         # @all (full time series)
+    CUSTOM = "custom"   # Source-specific version identifier
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,12 +123,14 @@ class Moniker:
     """
     A complete moniker reference with optional namespace, version, and revision.
 
-    Format: [namespace@]path/segments[@version][/vN][?query=params]
+    Format: [namespace@]path/segments[@version][/sub.resource][/vN][?query=params]
 
     Components:
         namespace: Access scope (e.g., "official", "user", "trading-desk")
         path: Hierarchical path with dot-notation support
-        version: Point-in-time reference (date like "20260115" or "latest")
+        version: Point-in-time reference (date, "latest", tenor like "3M", or "all")
+        version_type: Semantic type of version (DATE, LATEST, TENOR, ALL, CUSTOM)
+        sub_resource: Path after @version (e.g., "details" or "details.corporate.actions")
         revision: Schema/format revision (integer, e.g., 2 for /v2)
         params: Additional query parameters
 
@@ -118,11 +139,17 @@ class Moniker:
         commodities.derivatives/crypto/ETH@20260115/v2
         verified@reference.security/ISIN/US0378331005@latest
         user@analytics.risk/views/my-watchlist@20260115/v3
+        securities/012345678@20260101/details
+        securities/012345678@20260101/details.corporate.actions
+        prices.equity/AAPL@3M (3-month lookback)
+        risk.cvar/portfolio-123@all (full time series)
         holdings/20260115/fund_alpha?format=json
     """
     path: MonikerPath
     namespace: str | None = None
-    version: str | None = None  # @latest, @20260115, etc.
+    version: str | None = None  # @latest, @20260115, @3M, @all, etc.
+    version_type: VersionType | None = None  # Semantic type of version
+    sub_resource: str | None = None  # Path after @version (e.g., "details.corporate.actions")
     revision: int | None = None  # /v2 -> 2
     params: QueryParams = field(default_factory=lambda: QueryParams({}))
 
@@ -139,6 +166,10 @@ class Moniker:
         # Version suffix
         if self.version:
             parts.append(f"@{self.version}")
+
+        # Sub-resource (after version, before revision)
+        if self.sub_resource:
+            parts.append(f"/{self.sub_resource}")
 
         # Revision suffix
         if self.revision is not None:
@@ -165,10 +196,12 @@ class Moniker:
 
     @property
     def full_path(self) -> str:
-        """Path including version and revision but not namespace."""
+        """Path including version, sub-resource, and revision but not namespace."""
         parts = [str(self.path)]
         if self.version:
             parts.append(f"@{self.version}")
+        if self.sub_resource:
+            parts.append(f"/{self.sub_resource}")
         if self.revision is not None:
             parts.append(f"/v{self.revision}")
         return "".join(parts)
@@ -186,16 +219,39 @@ class Moniker:
     @property
     def version_date(self) -> str | None:
         """Extract date from version if it's a date format (YYYYMMDD)."""
+        if self.version_type == VersionType.DATE:
+            return self.version
+        # Fallback for backwards compatibility
         if self.version and self.version.isdigit() and len(self.version) == 8:
             return self.version
         return None
 
-    def with_version(self, version: str) -> Moniker:
+    @property
+    def version_tenor(self) -> tuple[int, str] | None:
+        """Extract tenor components if version is a tenor (e.g., 3M -> (3, 'M')).
+
+        Returns:
+            Tuple of (value, unit) where unit is Y/M/W/D, or None if not a tenor.
+        """
+        if self.version_type == VersionType.TENOR and self.version:
+            match = re.match(r"^(\d+)([YMWD])$", self.version, re.IGNORECASE)
+            if match:
+                return (int(match.group(1)), match.group(2).upper())
+        return None
+
+    @property
+    def is_all(self) -> bool:
+        """Whether this moniker requests the full time series."""
+        return self.version_type == VersionType.ALL
+
+    def with_version(self, version: str, version_type: VersionType | None = None) -> Moniker:
         """Create a copy with a different version."""
         return Moniker(
             path=self.path,
             namespace=self.namespace,
             version=version,
+            version_type=version_type,
+            sub_resource=self.sub_resource,
             revision=self.revision,
             params=self.params,
         )
@@ -206,6 +262,20 @@ class Moniker:
             path=self.path,
             namespace=namespace,
             version=self.version,
+            version_type=self.version_type,
+            sub_resource=self.sub_resource,
+            revision=self.revision,
+            params=self.params,
+        )
+
+    def with_sub_resource(self, sub_resource: str | None) -> Moniker:
+        """Create a copy with a different sub-resource."""
+        return Moniker(
+            path=self.path,
+            namespace=self.namespace,
+            version=self.version,
+            version_type=self.version_type,
+            sub_resource=sub_resource,
             revision=self.revision,
             params=self.params,
         )
