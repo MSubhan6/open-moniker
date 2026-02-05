@@ -57,7 +57,7 @@ config.yaml
 config_zmq.yaml
 catalog.yaml
 domains.yaml
-demo_monikers.yaml
+demo/demo_monikers.yaml
 
 # OS
 .DS_Store

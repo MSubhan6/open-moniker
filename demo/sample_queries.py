@@ -107,13 +107,17 @@ def colorize_moniker(moniker: str) -> str:
 # =============================================================================
 
 def load_demo_monikers() -> list[dict]:
-    """Load demo monikers from YAML config file."""
+    """Load demo monikers from YAML config file.
+
+    Looks for (in order):
+    1. demo/demo_monikers.yaml (local customizations, not in git)
+    2. demo/sample_demo_monikers.yaml (committed sample)
+    """
     script_dir = Path(__file__).parent
-    project_root = script_dir.parent
 
     config_paths = [
-        project_root / "demo_monikers.yaml",
-        project_root / "sample_demo_monikers.yaml",
+        script_dir / "demo_monikers.yaml",          # Local (not committed)
+        script_dir / "sample_demo_monikers.yaml",   # Sample (committed)
     ]
 
     for config_path in config_paths:
@@ -125,7 +129,7 @@ def load_demo_monikers() -> list[dict]:
                     print(f"  Loaded {len(monikers)} demo monikers from {config_path.name}")
                     return monikers
 
-    print(f"  {C.YELLOW}Warning: No demo_monikers.yaml found, using built-in defaults{C.RESET}")
+    print(f"  {C.YELLOW}Warning: No demo monikers file found, using built-in defaults{C.RESET}")
     return [
         {"moniker": "prices.equity/AAPL", "action": "resolve", "desc": "Equity Price"},
         {"moniker": "analytics", "action": "describe", "desc": "Describe Analytics"},

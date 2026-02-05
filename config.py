@@ -12,11 +12,11 @@ from pathlib import Path
 
 # Config file mappings: sample -> target
 # NOTE: catalog.yaml is NOT included - it's managed via Config UI and should not be overwritten
+# NOTE: demo_monikers.yaml now lives in demo/ folder and is handled by the demo script
 CONFIG_FILES = {
     "config.sample.yaml": "config.yaml",
     "config_zmq.sample.yaml": "config_zmq.yaml",
     "sample_domains.yaml": "domains.yaml",
-    "sample_demo_monikers.yaml": "demo_monikers.yaml",
 }
 
 
