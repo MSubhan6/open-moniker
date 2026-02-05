@@ -328,8 +328,8 @@ async def save_to_yaml():
     nodes = catalog.all_nodes()
     catalog_dict = serializer.serialize_catalog(nodes)
 
-    # Write to file
-    output_path = Path(_yaml_output_path)
+    # Write to the same file we loaded from (catalog.yaml), not catalog_output.yaml
+    output_path = Path(_catalog_definition_file or _yaml_output_path)
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             yaml.dump(catalog_dict, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
