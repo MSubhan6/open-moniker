@@ -57,7 +57,7 @@ def colorize_path(path: str) -> str:
     """Colorize a moniker path with semantic highlighting."""
     parts = re.split(r'([/@.])', path)
     result = []
-    seen_first_segment = False
+    seen_first_slash = False
 
     date_pattern = re.compile(r'^@?\d{8}$')
     tenor_pattern = re.compile(r'^(KRD|DV01|CR01)?\d*[YMWD]$|^KRD\d+[YMWD]?$', re.IGNORECASE)
@@ -71,12 +71,17 @@ def colorize_path(path: str) -> str:
     for part in parts:
         if not part:
             continue
-        elif part in '/@.':
+        elif part == '/':
+            seen_first_slash = True
             result.append(C.GRAY + part + C.RESET)
-        elif not seen_first_segment and part not in '/@.':
-            # First segment (top-level domain) is always yellow
-            result.append(C.YELLOW + part + C.RESET)
-            seen_first_segment = True
+        elif not seen_first_slash:
+            # Everything before first slash (top-level domain) is yellow, including dots
+            if part == '.':
+                result.append(C.YELLOW + part + C.RESET)
+            else:
+                result.append(C.YELLOW + part + C.RESET)
+        elif part in '@.':
+            result.append(C.GRAY + part + C.RESET)
         elif keyword_pattern.match(part):
             result.append(C.RED + C.BOLD + part + C.RESET)
         elif date_pattern.match(part):
