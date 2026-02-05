@@ -395,7 +395,7 @@
 
         /* Dynamic config fields */
         .config-field {
-            margin-bottom: var(--sp-3);
+            margin-bottom: var(--sp-4);
         }
 
         .config-field:last-child { margin-bottom: 0; }
@@ -404,11 +404,36 @@
             display: flex;
             align-items: center;
             gap: var(--sp-2);
+            margin-bottom: var(--sp-2);
         }
 
         .config-field .required::after {
             content: '*';
             color: var(--c-red);
+        }
+
+        .config-field input,
+        .config-field textarea,
+        .config-field select {
+            width: 100%;
+            padding: var(--sp-3) var(--sp-4);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-1);
+            font-family: var(--font-sans);
+            font-size: var(--fs-600);
+        }
+
+        .config-field input:focus,
+        .config-field textarea:focus,
+        .config-field select:focus {
+            outline: none;
+            border-color: var(--c-peacock);
+            box-shadow: var(--focus-ring);
+        }
+
+        .config-field textarea {
+            min-height: 100px;
+            resize: vertical;
         }
 
         /* Path display */
@@ -742,6 +767,7 @@
                     <div>
                         <button class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
                         <button class="btn btn-success" onclick="saveNode()">Save Node</button>
+                    </div>
                 </div>
             </div>
 
