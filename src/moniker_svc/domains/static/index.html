@@ -71,8 +71,6 @@
         }
 
         .container {
-            max-width: 1600px;
-            margin: 0 auto;
             padding: var(--sp-5);
         }
 
@@ -462,9 +460,7 @@
                             <th>#</th>
                             <th>Domain</th>
                             <th>Display Name</th>
-                            <th>Code</th>
                             <th>Category</th>
-                            <th>Color</th>
                             <th>Owner</th>
                             <th>Tech Custodian</th>
                             <th>Business Steward</th>
@@ -472,13 +468,14 @@
                             <th>PII</th>
                             <th>Help Channel</th>
                             <th>Wiki</th>
-                            <th>Notes</th>
+                            <th>Color</th>
+                            <th style="min-width: 200px">Notes</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="domains-body">
                         <tr>
-                            <td colspan="15" class="empty-state">Loading domains...</td>
+                            <td colspan="14" class="empty-state">Loading domains...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -654,18 +651,11 @@
                     <td>
                         <div class="domain-name">
                             <span class="domain-color-dot" style="background: ${d.color}"></span>
-                            ${d.name}
+                            ${d.short_code || '-'}
                         </div>
                     </td>
                     <td class="editable" data-field="display_name" contenteditable="true">${escapeHtml(d.display_name)}</td>
-                    <td><span class="short-code">${d.short_code || '-'}</span></td>
                     <td class="editable" data-field="category" contenteditable="true">${escapeHtml(d.category)}</td>
-                    <td>
-                        <div class="color-cell">
-                            <input type="color" class="color-swatch" value="${d.color}" onchange="updateColor('${d.name}', this.value)">
-                            <span style="font-family: monospace; font-size: 11px">${d.color}</span>
-                        </div>
-                    </td>
                     <td class="editable truncate" data-field="owner" contenteditable="true" title="${escapeHtml(d.owner)}">${escapeHtml(d.owner)}</td>
                     <td class="editable truncate" data-field="tech_custodian" contenteditable="true" title="${escapeHtml(d.tech_custodian)}">${escapeHtml(d.tech_custodian)}</td>
                     <td class="editable truncate" data-field="business_steward" contenteditable="true" title="${escapeHtml(d.business_steward)}">${escapeHtml(d.business_steward)}</td>
@@ -685,9 +675,15 @@
                     </td>
                     <td class="editable truncate" data-field="help_channel" contenteditable="true" title="${escapeHtml(d.help_channel)}">${escapeHtml(d.help_channel)}</td>
                     <td>
-                        ${d.wiki_link ? `<a href="${escapeHtml(d.wiki_link)}" class="link" target="_blank" title="${escapeHtml(d.wiki_link)}">${d.wiki_link.includes('confluence') ? '📖 Confluence' : '🔗 Wiki'}</a>` : '-'}
+                        ${d.wiki_link ? `<a href="${escapeHtml(d.wiki_link)}" class="link" target="_blank" title="${escapeHtml(d.wiki_link)}">Link</a>` : '-'}
                     </td>
-                    <td class="editable truncate" data-field="notes" contenteditable="true" title="${escapeHtml(d.notes)}">${escapeHtml(d.notes)}</td>
+                    <td>
+                        <div class="color-cell">
+                            <input type="color" class="color-swatch" value="${d.color}" onchange="updateColor('${d.name}', this.value)">
+                            <span style="font-family: monospace; font-size: 11px">${d.color}</span>
+                        </div>
+                    </td>
+                    <td class="editable" data-field="notes" contenteditable="true" style="min-width: 200px" title="${escapeHtml(d.notes)}">${escapeHtml(d.notes)}</td>
                     <td class="actions-cell">
                         <button class="btn btn-icon" onclick="editDomain('${d.name}')" title="Edit">✏️</button>
                         <button class="btn btn-icon delete" onclick="deleteDomain('${d.name}')" title="Delete">🗑️</button>
