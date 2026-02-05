@@ -713,12 +713,12 @@ Resolves monikers (semantic data paths) to source connection info.
 ## Documentation
 
 - Swagger UI: `/docs`
-- ReDoc: `/redoc`
 - OpenAPI JSON: `/openapi.json`
     """,
     version="0.2.0",
     contact={"name": "Data Platform Team"},
     lifespan=lifespan,
+    redoc_url=None,  # Disabled - doesn't work reliably
     openapi_tags=[
         {"name": "Resolution", "description": "Resolve monikers to connection info for client-side execution"},
         {"name": "Data Fetch", "description": "Server-side data retrieval and metadata"},
@@ -1692,11 +1692,6 @@ _LANDING_HTML = """
                 <h2>Swagger UI</h2>
                 <p>Interactive API documentation with try-it-out functionality.</p>
                 <a href="/docs">Open Swagger</a>
-            </div>
-            <div class="card docs">
-                <h2>ReDoc</h2>
-                <p>Clean, readable API reference documentation.</p>
-                <a href="/redoc">Open ReDoc</a>
             </div>
         </div>
 
