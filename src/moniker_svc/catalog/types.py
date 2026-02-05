@@ -237,6 +237,9 @@ class CatalogNode:
     display_name: str = ""
     description: str = ""
 
+    # Domain mapping (for top-level nodes - maps to domain registry)
+    domain: str | None = None
+
     # Ownership (inherits from ancestors if not set)
     ownership: Ownership = field(default_factory=Ownership)
 

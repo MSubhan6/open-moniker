@@ -166,6 +166,7 @@ class CatalogNodeModel(BaseModel):
     path: str
     display_name: str = ""
     description: str = ""
+    domain: str | None = None
     ownership: OwnershipModel | None = None
     source_binding: SourceBindingModel | None = None
     data_quality: DataQualityModel | None = None
@@ -197,6 +198,7 @@ class CreateNodeRequest(BaseModel):
     path: str
     display_name: str = ""
     description: str = ""
+    domain: str | None = None
     ownership: OwnershipModel | None = None
     source_binding: SourceBindingModel | None = None
     data_quality: DataQualityModel | None = None
@@ -216,6 +218,7 @@ class UpdateNodeRequest(BaseModel):
     """Request to update a node (partial update allowed)."""
     display_name: str | None = None
     description: str | None = None
+    domain: str | None = None
     ownership: OwnershipModel | None = None
     source_binding: SourceBindingModel | None = None
     data_quality: DataQualityModel | None = None

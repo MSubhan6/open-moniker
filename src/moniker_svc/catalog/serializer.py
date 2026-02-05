@@ -28,6 +28,9 @@ class CatalogSerializer:
         if node.description:
             result["description"] = node.description
 
+        if node.domain:
+            result["domain"] = node.domain
+
         if node.ownership and not node.ownership.is_empty():
             result["ownership"] = self.serialize_ownership(node.ownership)
 

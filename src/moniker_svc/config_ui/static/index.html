@@ -1167,17 +1167,16 @@
                     const hasSource = node && node.source_binding;
 
                     // Check domain mapping for top-level nodes
-                    // Domain matches either exact name (e.g., "indices") or prefix before "." (e.g., "indices.sovereign" -> "indices")
+                    // Domain is explicitly set on the node, not derived from path
                     const isTopLevelNode = !data._path.includes('/');
-                    const domainPrefix = name.includes('.') ? name.split('.')[0] : name;
-                    const hasDomain = isTopLevelNode && (domainNames.has(name) || domainNames.has(domainPrefix));
+                    const nodeDomain = node?.domain || null;
+                    const hasDomain = isTopLevelNode && nodeDomain && domainNames.has(nodeDomain);
                     const missingDomain = isTopLevelNode && !hasDomain;
 
                     // Build badges
                     let badges = '';
                     if (isTopLevelNode && hasDomain) {
-                        const matchedDomain = domainNames.has(name) ? name : domainPrefix;
-                        badges += `<span class="domain-badge" title="Domain: ${matchedDomain}">${matchedDomain}</span>`;
+                        badges += `<span class="domain-badge" title="Domain: ${nodeDomain}">${nodeDomain}</span>`;
                     }
                     if (hasSource) {
                         badges += `<span class="node-badge">${node.source_binding.type}</span>`;
@@ -1241,45 +1240,27 @@
         // Domain Functions
         // =============================================================================
 
-        function getDomainNameForPath(path) {
-            // Extract expected domain name from path
-            // For "indices/equity" -> "indices"
-            // For "indices.sovereign/developed" -> "indices" (prefix before .)
-            const firstSegment = path.split('/')[0];
-            if (firstSegment.includes('.')) {
-                return firstSegment.split('.')[0];
-            }
-            return firstSegment;
-        }
-
-        function renderDomainInfo(path) {
+        function renderDomainInfo(path, currentDomain) {
             // Only show for top-level nodes (no / in path)
             if (path.includes('/')) {
                 return '';
             }
 
-            const expectedDomain = getDomainNameForPath(path);
-            const domainExists = domainNames.has(expectedDomain);
+            // Build domain options from loaded domain names
+            const domainOptions = Array.from(domainNames).sort();
+            const hasDomain = currentDomain && domainNames.has(currentDomain);
 
-            if (domainExists) {
-                return `
-                    <div class="domain-info domain-exists">
-                        <span class="domain-info-label">Domain:</span>
-                        <span class="domain-info-name">${escapeHtml(expectedDomain)}</span>
-                        <span class="domain-info-status">Configured</span>
-                        <a href="/domains/ui" class="btn btn-sm btn-secondary" target="_blank">Manage Domains</a>
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="domain-info domain-missing">
-                        <span class="domain-info-label">Domain:</span>
-                        <span class="domain-info-name">${escapeHtml(expectedDomain)}</span>
-                        <span class="domain-info-status">Not configured - create in Domains UI</span>
-                        <a href="/domains/ui" class="btn btn-sm btn-secondary" target="_blank">Manage Domains</a>
-                    </div>
-                `;
-            }
+            return `
+                <div class="domain-info ${hasDomain ? 'domain-exists' : 'domain-missing'}">
+                    <span class="domain-info-label">Domain:</span>
+                    <select id="node_domain" class="domain-select" style="min-width: 150px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border);">
+                        <option value="">-- None --</option>
+                        ${domainOptions.map(d => `<option value="${escapeHtml(d)}" ${currentDomain === d ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}
+                    </select>
+                    <span class="domain-info-status">${hasDomain ? 'Configured' : 'Not mapped'}</span>
+                    <a href="/domains/ui" class="btn btn-sm btn-secondary" target="_blank">Manage Domains</a>
+                </div>
+            `;
         }
 
         // =============================================================================
@@ -1296,7 +1277,7 @@
             container.innerHTML = `
                 <div class="path-display">moniker://${node.path}</div>
 
-                ${renderDomainInfo(node.path)}
+                ${renderDomainInfo(node.path, node.domain)}
 
                 <!-- Basic Info -->
                 <div class="form-section">
@@ -1814,6 +1795,12 @@
                 classification: document.getElementById('classification')?.value || 'internal',
                 tags: collectTags(),
             };
+
+            // Domain (for top-level nodes)
+            const domainSelect = document.getElementById('node_domain');
+            if (domainSelect) {
+                data.domain = domainSelect.value || null;
+            }
 
             // Ownership
             const ownership = {};

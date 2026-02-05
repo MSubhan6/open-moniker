@@ -213,6 +213,7 @@ class CatalogLoader:
             path=path,
             display_name=data.get("display_name", ""),
             description=data.get("description", ""),
+            domain=data.get("domain"),
             ownership=ownership,
             source_binding=source_binding,
             data_quality=data_quality,

@@ -100,6 +100,7 @@ def _node_to_model(node: CatalogNode) -> CatalogNodeModel:
         path=node.path,
         display_name=node.display_name,
         description=node.description,
+        domain=node.domain,
         ownership=ownership,
         source_binding=source_binding,
         classification=node.classification,
@@ -148,6 +149,7 @@ def _request_to_node(path: str, request: CreateNodeRequest | UpdateNodeRequest, 
     if existing and isinstance(request, UpdateNodeRequest):
         display_name = request.display_name if request.display_name is not None else existing.display_name
         description = request.description if request.description is not None else existing.description
+        domain = request.domain if request.domain is not None else existing.domain
         ownership = _model_to_ownership(request.ownership) if request.ownership is not None else existing.ownership
         source_binding = _model_to_source_binding(request.source_binding) if request.source_binding is not None else existing.source_binding
         classification = request.classification if request.classification is not None else existing.classification
@@ -157,6 +159,7 @@ def _request_to_node(path: str, request: CreateNodeRequest | UpdateNodeRequest, 
         # Create request - use defaults
         display_name = request.display_name if hasattr(request, 'display_name') else ""
         description = request.description if hasattr(request, 'description') else ""
+        domain = request.domain if hasattr(request, 'domain') else None
         ownership = _model_to_ownership(request.ownership)
         source_binding = _model_to_source_binding(request.source_binding)
         classification = request.classification if hasattr(request, 'classification') else "internal"
@@ -167,6 +170,7 @@ def _request_to_node(path: str, request: CreateNodeRequest | UpdateNodeRequest, 
         path=path,
         display_name=display_name,
         description=description,
+        domain=domain,
         ownership=ownership,
         source_binding=source_binding,
         classification=classification,
