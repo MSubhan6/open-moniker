@@ -16,6 +16,7 @@ CONFIG_FILES = {
     "config_zmq.sample.yaml": "config_zmq.yaml",
     "sample_domains.yaml": "domains.yaml",
     "sample_catalog.yaml": "catalog.yaml",
+    "sample_demo_monikers.yaml": "demo_monikers.yaml",
 }
 
 

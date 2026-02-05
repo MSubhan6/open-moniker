@@ -6,151 +6,24 @@ Run with: python demo/sample_queries.py
 Requires the service to be running: python start.py
 
 ADDING NEW MONIKERS:
-Simply add an entry to DEMO_MONIKERS list below. The menu is auto-generated.
+Edit demo_monikers.yaml in the project root. Run 'python config.py' to create
+it from sample_demo_monikers.yaml if it doesn't exist.
 """
 
 import json
 import re
-import sys
+from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
-# Initialize colorama for Windows support
+import yaml
 from colorama import init, Fore, Style
 init(autoreset=True)
 
 BASE_URL = "http://localhost:8050"
 
-
-# =============================================================================
-# DEMO MONIKERS - Add new demos here!
-# =============================================================================
-
-DEMO_MONIKERS = [
-    # --- Resolution demos (returns connection info) ---
-    {
-        "moniker": "prices.equity/AAPL",
-        "action": "resolve",
-        "desc": "Equity Price (Snowflake)",
-        "note": "Returns connection info for Snowflake - client connects directly.",
-    },
-    {
-        "moniker": "analytics.risk/var/portfolio-123",
-        "action": "resolve",
-        "desc": "Risk VaR (REST)",
-        "note": "Returns REST API connection info.",
-    },
-    {
-        "moniker": "reference.security/ISIN/US0378331005",
-        "action": "resolve",
-        "desc": "Security Master (Oracle)",
-        "note": "Returns Oracle connection info.",
-    },
-    {
-        "moniker": "spm.position/20260109/700",
-        "action": "resolve",
-        "desc": "SPM Position by date/account",
-        "note": "Path segments: date (20260109), account (700).",
-    },
-
-    # --- Fetch demos (server-side execution) ---
-    {
-        "moniker": "prices.equity/AAPL",
-        "action": "fetch",
-        "desc": "Equity Price",
-        "note": "Server executes the query and returns data directly.",
-    },
-    {
-        "moniker": "commodities.derivatives/crypto/ETH",
-        "action": "fetch",
-        "desc": "Digital Assets (REST)",
-        "note": "Server calls REST API and returns data.",
-    },
-
-    # --- Metadata & Discovery ---
-    {
-        "moniker": "analytics",
-        "action": "describe",
-        "desc": "Describe Analytics domain",
-        "note": "Returns metadata, ownership, classification.",
-    },
-    {
-        "moniker": "analytics.risk/var",
-        "action": "lineage",
-        "desc": "Ownership Lineage",
-        "note": "Shows where each ownership field is inherited from.",
-    },
-    {
-        "moniker": "reference",
-        "action": "list",
-        "desc": "List Children",
-        "note": "Lists child paths under reference.",
-    },
-    {
-        "moniker": "indices.sovereign/developed/EU.GovBondAgg/EUR/ALL",
-        "action": "sample",
-        "desc": "Sample Index Data",
-        "note": "Quick preview of data structure.",
-    },
-    {
-        "moniker": "holdings/positions",
-        "action": "metadata",
-        "desc": "Rich Metadata (AI agents)",
-        "note": "Returns comprehensive info for AI discoverability.",
-    },
-    {
-        "moniker": "analytics",
-        "action": "tree",
-        "desc": "Catalog Tree",
-        "note": "Hierarchical view of the catalog.",
-    },
-
-    # --- Complex patterns ---
-    {
-        "moniker": "index.global/BBGGlobalAggTreasury/GBP/MWS_LIBOR",
-        "action": "resolve",
-        "desc": "Complex Index Path",
-        "note": "Multi-segment: index family / currency / benchmark.",
-    },
-    {
-        "moniker": "rates.gov/DKK/DK0.125Mar2026/KRD/KRD12Y",
-        "action": "resolve",
-        "desc": "Gov Rates with KRD tenor",
-        "note": "Path: currency / bond ID / risk type / tenor.",
-    },
-    {
-        "moniker": "securities/012345678@20260101/details.corporate.actions",
-        "action": "resolve",
-        "desc": "Versioned Sub-resource",
-        "note": "Point-in-time view with sub-resource projection.",
-    },
-
-    # --- Version type examples ---
-    {
-        "moniker": "prices.equity/AAPL@20260115",
-        "action": "resolve",
-        "desc": "Date Version (@YYYYMMDD)",
-        "note": "Specific date version.",
-    },
-    {
-        "moniker": "prices.equity/AAPL@latest",
-        "action": "resolve",
-        "desc": "Latest Version (@latest)",
-        "note": "Most recent available data.",
-    },
-    {
-        "moniker": "prices.equity/AAPL@3M",
-        "action": "resolve",
-        "desc": "Lookback Version (@3M)",
-        "note": "Three months lookback period.",
-    },
-    {
-        "moniker": "risk.cvar/portfolio-123@all",
-        "action": "resolve",
-        "desc": "All Version (@all)",
-        "note": "Full time series.",
-    },
-]
+# Global - populated at startup
+DEMO_MONIKERS: list[dict] = []
 
 
 # =============================================================================
@@ -224,6 +97,36 @@ def colorize_moniker(moniker: str) -> str:
 
 
 # =============================================================================
+# Load Demo Monikers from YAML
+# =============================================================================
+
+def load_demo_monikers() -> list[dict]:
+    """Load demo monikers from YAML config file."""
+    script_dir = Path(__file__).parent
+    project_root = script_dir.parent
+
+    config_paths = [
+        project_root / "demo_monikers.yaml",
+        project_root / "sample_demo_monikers.yaml",
+    ]
+
+    for config_path in config_paths:
+        if config_path.exists():
+            with open(config_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+                monikers = data.get("monikers", [])
+                if monikers:
+                    print(f"  Loaded {len(monikers)} demo monikers from {config_path.name}")
+                    return monikers
+
+    print(f"  {C.YELLOW}Warning: No demo_monikers.yaml found, using built-in defaults{C.RESET}")
+    return [
+        {"moniker": "prices.equity/AAPL", "action": "resolve", "desc": "Equity Price"},
+        {"moniker": "analytics", "action": "describe", "desc": "Describe Analytics"},
+    ]
+
+
+# =============================================================================
 # API Functions
 # =============================================================================
 
@@ -273,18 +176,15 @@ def handle_resolve(moniker: str, note: str = ""):
         print(f"  {C.BOLD}Source Type:{C.RESET} {C.ORANGE}{result['source_type']}{C.RESET}")
         print(f"  {C.BOLD}Binding Path:{C.RESET} {colorize_path(result['binding_path'])}")
 
-        # Connection info (format varies by source type)
         conn = result.get('connection', {})
         print(f"\n  {C.BOLD}Connection:{C.RESET}")
         for key, val in conn.items():
             if val and key not in ('password', 'secret', 'token'):
                 print(f"    {key}: {C.GREEN}{val}{C.RESET}")
 
-        # Query/path
         query = result.get('query', '')
         if query:
             print(f"\n  {C.BOLD}Query:{C.RESET}")
-            # Truncate long queries
             if len(query) > 300:
                 print(f"    {query[:300]}...")
             else:
@@ -414,7 +314,6 @@ def handle_tree(moniker: str, note: str = ""):
         print_tree(result)
 
 
-# Action handler mapping
 HANDLERS = {
     'resolve': handle_resolve,
     'fetch': handle_fetch,
@@ -446,7 +345,6 @@ def option_batch_validate():
     """Batch Validate - Multiple monikers"""
     header("Batch Moniker Validation")
 
-    # Use monikers from DEMO_MONIKERS that have resolve action
     monikers = [d['moniker'] for d in DEMO_MONIKERS if d['action'] == 'resolve'][:6]
     monikers.append("invalid/path/does/not/exist")
 
@@ -553,15 +451,6 @@ def build_menu():
         "",
     ]
 
-    # Group monikers by action
-    by_action = {}
-    for item in DEMO_MONIKERS:
-        action = item['action']
-        if action not in by_action:
-            by_action[action] = []
-        by_action[action].append(item)
-
-    # Section headers
     section_names = {
         'resolve': "Resolution (returns connection info)",
         'fetch': "Fetch (server-side execution)",
@@ -581,20 +470,16 @@ def build_menu():
         action = item['action']
         section = section_names.get(action, "Other")
 
-        # Add section header if changed
         if section != current_section:
             lines.append(f"  {C.GRAY}--- {section} ---{C.RESET}")
             current_section = section
 
-        # Build menu line
         moniker_colored = colorize_moniker(item['moniker'])
         lines.append(f"  {C.BOLD}{option_num:2}.{C.RESET} [{action[:3].upper()}] {moniker_colored}")
 
-        # Store handler
         options[str(option_num)] = (item['action'], item['moniker'], item.get('note', ''), item['desc'])
         option_num += 1
 
-    # Special options
     lines.extend([
         "",
         f"  {C.GRAY}--- Batch & Catalog ---{C.RESET}",
@@ -641,10 +526,15 @@ def run_option(options: dict, choice: str):
 # =============================================================================
 
 def main():
+    global DEMO_MONIKERS
+
     print("\n" + C.CYAN + "=" * 60 + C.RESET)
     print(f"  {C.BOLD}Moniker Service Demo{C.RESET}")
     print(f"  Ensure service is running: {C.CYAN}python start.py{C.RESET}")
     print(C.CYAN + "=" * 60 + C.RESET)
+
+    # Load monikers from YAML
+    DEMO_MONIKERS = load_demo_monikers()
 
     menu_str, options = build_menu()
 

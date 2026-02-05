@@ -57,6 +57,7 @@ config.yaml
 config_zmq.yaml
 catalog.yaml
 domains.yaml
+demo_monikers.yaml
 
 # OS
 .DS_Store
@@ -64,3 +65,4 @@ Thumbs.db
 
 # mypy
 .mypy_cache/
+catalog_output.yaml
