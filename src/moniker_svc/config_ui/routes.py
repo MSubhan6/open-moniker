@@ -333,12 +333,14 @@ async def save_to_yaml():
     catalog_dict = serializer.serialize_catalog(nodes)
 
     # Write to the same file we loaded from (catalog.yaml), not catalog_output.yaml
+    # DEBUG: Log which files we're considering
+    logger.info(f"Save: _catalog_definition_file={_catalog_definition_file}, _yaml_output_path={_yaml_output_path}")
     output_path = Path(_catalog_definition_file or _yaml_output_path)
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             yaml.dump(catalog_dict, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
-        logger.info(f"Saved catalog to {output_path} ({len(nodes)} nodes)")
+        logger.info(f"Saved catalog to {output_path.absolute()} ({len(nodes)} nodes)")
 
         return SaveResponse(
             success=True,
@@ -357,6 +359,8 @@ async def reload_from_yaml():
     catalog = _get_catalog()
 
     # Determine which file to load from
+    # DEBUG: Log which files we're considering
+    logger.info(f"Reload: _catalog_definition_file={_catalog_definition_file}, _yaml_output_path={_yaml_output_path}")
     source_path = _catalog_definition_file or _yaml_output_path
 
     if not Path(source_path).exists():
