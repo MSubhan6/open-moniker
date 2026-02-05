@@ -21,9 +21,13 @@ class Domain:
     # Required: domain identifier (matches first segment of moniker paths)
     name: str
 
+    # Sequence number for ordering
+    id: Optional[int] = None    # Numeric ID for ordering in lists/tables
+
     # Display and identification
     display_name: str = ""      # Human-readable name, e.g., "Market Indices"
     short_code: str = ""        # Short code, e.g., "IDX", "CMD", "REF"
+    category: str = ""          # e.g., "Market Data", "Reference Data"
     color: str = "#6B7280"      # Hex color for UI display (default: gray)
 
     # Ownership and governance
@@ -32,7 +36,6 @@ class Domain:
     business_steward: str = ""  # Business data steward
 
     # Classification
-    data_category: str = ""     # e.g., "Market Data", "Reference Data"
     confidentiality: str = "internal"  # internal, confidential, strictly_confidential, public
     pii: bool = False           # Contains personally identifiable information?
 
@@ -57,15 +60,21 @@ class Domain:
         Returns:
             Domain instance
         """
+        # Get id, converting to int if present
+        id_val = data.get("id")
+        if id_val is not None:
+            id_val = int(id_val)
+
         return cls(
             name=name,
+            id=id_val,
             display_name=data.get("display_name", ""),
             short_code=data.get("short_code", ""),
+            category=data.get("category", ""),
             color=data.get("color", "#6B7280"),
             owner=data.get("owner", ""),
             tech_custodian=data.get("tech_custodian", ""),
             business_steward=data.get("business_steward", ""),
-            data_category=data.get("data_category", ""),
             confidentiality=data.get("confidentiality", "internal"),
             pii=data.get("pii", False),
             help_channel=data.get("help_channel", ""),

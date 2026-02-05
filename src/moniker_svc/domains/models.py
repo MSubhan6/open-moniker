@@ -15,13 +15,14 @@ class DomainModel(BaseModel):
         json_schema_extra={
             "example": {
                 "name": "indices",
+                "id": 1,
                 "display_name": "Market Indices",
                 "short_code": "IDX",
+                "category": "Market Data",
                 "color": "#4A90D9",
                 "owner": "indices-governance@firm.com",
                 "tech_custodian": "quant-tech@firm.com",
                 "business_steward": "index-committee@firm.com",
-                "data_category": "Market Data",
                 "confidentiality": "internal",
                 "pii": False,
                 "help_channel": "#indices-support",
@@ -32,13 +33,14 @@ class DomainModel(BaseModel):
     )
 
     name: str = Field(..., description="Domain identifier (matches first segment of moniker paths)")
+    id: Optional[int] = Field(None, description="Numeric ID for ordering")
     display_name: str = Field("", description="Human-readable name")
     short_code: str = Field("", description="Short code (e.g., IDX, CMD, REF)")
+    category: str = Field("", description="Data category classification")
     color: str = Field("#6B7280", description="Hex color code for UI display")
     owner: str = Field("", description="Executive/business owner")
     tech_custodian: str = Field("", description="Technical custodian")
     business_steward: str = Field("", description="Business data steward")
-    data_category: str = Field("", description="Data category classification")
     confidentiality: str = Field("internal", description="Confidentiality level: public, internal, confidential, strictly_confidential")
     pii: bool = Field(False, description="Contains personally identifiable information")
     help_channel: str = Field("", description="Support channel (Teams/Slack)")
@@ -53,24 +55,26 @@ class CreateDomainRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "name": "derivatives",
+                "id": 14,
                 "display_name": "Derivatives",
                 "short_code": "DRV",
+                "category": "Market Data",
                 "color": "#8E44AD",
                 "owner": "derivatives-desk@firm.com",
-                "data_category": "Market Data",
                 "confidentiality": "internal",
             }
         }
     )
 
     name: str = Field(..., description="Domain identifier (must be unique)")
+    id: Optional[int] = Field(None, description="Numeric ID for ordering")
     display_name: str = Field("", description="Human-readable name")
     short_code: str = Field("", description="Short code")
+    category: str = Field("", description="Data category")
     color: str = Field("#6B7280", description="Hex color code")
     owner: str = Field("", description="Executive/business owner")
     tech_custodian: str = Field("", description="Technical custodian")
     business_steward: str = Field("", description="Business data steward")
-    data_category: str = Field("", description="Data category")
     confidentiality: str = Field("internal", description="Confidentiality level")
     pii: bool = Field(False, description="Contains PII")
     help_channel: str = Field("", description="Support channel")
@@ -91,13 +95,14 @@ class UpdateDomainRequest(BaseModel):
         }
     )
 
+    id: Optional[int] = Field(None, description="Numeric ID for ordering")
     display_name: Optional[str] = Field(None, description="Human-readable name")
     short_code: Optional[str] = Field(None, description="Short code")
+    category: Optional[str] = Field(None, description="Data category")
     color: Optional[str] = Field(None, description="Hex color code")
     owner: Optional[str] = Field(None, description="Executive/business owner")
     tech_custodian: Optional[str] = Field(None, description="Technical custodian")
     business_steward: Optional[str] = Field(None, description="Business data steward")
-    data_category: Optional[str] = Field(None, description="Data category")
     confidentiality: Optional[str] = Field(None, description="Confidentiality level")
     pii: Optional[bool] = Field(None, description="Contains PII")
     help_channel: Optional[str] = Field(None, description="Support channel")

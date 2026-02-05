@@ -40,21 +40,22 @@ def save_domains_to_yaml(
     data = {}
     for domain in domain_list:
         domain_data = {
+            "id": domain.id,
             "display_name": domain.display_name,
             "short_code": domain.short_code,
+            "category": domain.category,
             "color": domain.color,
             "owner": domain.owner,
             "tech_custodian": domain.tech_custodian,
             "business_steward": domain.business_steward,
-            "data_category": domain.data_category,
             "confidentiality": domain.confidentiality,
             "pii": domain.pii,
             "help_channel": domain.help_channel,
             "wiki_link": domain.wiki_link,
             "notes": domain.notes,
         }
-        # Remove empty string values for cleaner output
-        domain_data = {k: v for k, v in domain_data.items() if v or isinstance(v, bool)}
+        # Remove empty string values and None for cleaner output
+        domain_data = {k: v for k, v in domain_data.items() if v is not None and (v or isinstance(v, bool) or isinstance(v, int))}
         data[domain.name] = domain_data
 
     path = Path(file_path)

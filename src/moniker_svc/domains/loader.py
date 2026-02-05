@@ -61,8 +61,8 @@ def load_domains_from_csv(
     """
     Load domains from a CSV file.
 
-    Expected columns: name, display_name, short_code, color, owner,
-    tech_custodian, business_steward, data_category, confidentiality,
+    Expected columns: name, id, display_name, short_code, category, color, owner,
+    tech_custodian, business_steward, confidentiality,
     pii, help_channel, wiki_link, notes
 
     Args:
@@ -84,19 +84,24 @@ def load_domains_from_csv(
             if not name:
                 continue
 
+            # Convert id to int if present
+            id_val = row.get("id", "").strip()
+            id_int = int(id_val) if id_val else None
+
             # Convert pii to boolean
             pii_value = row.get("pii", "").lower()
             pii = pii_value in ("true", "yes", "1")
 
             domain = Domain(
                 name=name,
+                id=id_int,
                 display_name=row.get("display_name", ""),
                 short_code=row.get("short_code", ""),
+                category=row.get("category", ""),
                 color=row.get("color", "#6B7280"),
                 owner=row.get("owner", ""),
                 tech_custodian=row.get("tech_custodian", ""),
                 business_steward=row.get("business_steward", ""),
-                data_category=row.get("data_category", ""),
                 confidentiality=row.get("confidentiality", "internal"),
                 pii=pii,
                 help_channel=row.get("help_channel", ""),

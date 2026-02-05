@@ -5,13 +5,14 @@
 # Domain names map to the first segment of moniker paths.
 
 indices:
+  id: 1
   display_name: Market Indices
   short_code: IDX
+  category: Market Data
   color: "#4A90D9"
   owner: indices-governance@firm.com
   tech_custodian: quant-tech@firm.com
   business_steward: index-committee@firm.com
-  data_category: Market Data
   confidentiality: internal
   pii: false
   help_channel: "#indices-support"
@@ -19,13 +20,14 @@ indices:
   notes: Benchmark indices, aggregates, and composites
 
 commodities:
+  id: 2
   display_name: Commodities
   short_code: CMD
+  category: Market Data
   color: "#E67E22"
   owner: commodities-desk@firm.com
   tech_custodian: commodities-tech@firm.com
   business_steward: commodities-risk@firm.com
-  data_category: Market Data
   confidentiality: internal
   pii: false
   help_channel: "#commodities-data"
@@ -33,13 +35,14 @@ commodities:
   notes: Commodity futures, spot prices, and derivatives
 
 reference:
+  id: 3
   display_name: Reference Data
   short_code: REF
+  category: Reference Data
   color: "#27AE60"
   owner: ref-data-governance@firm.com
   tech_custodian: ref-data-tech@firm.com
   business_steward: ref-data-steward@firm.com
-  data_category: Reference Data
   confidentiality: internal
   pii: false
   help_channel: "#reference-data"
@@ -47,13 +50,14 @@ reference:
   notes: Security master, calendars, and static reference data
 
 instruments:
+  id: 4
   display_name: Instruments
   short_code: INS
+  category: Reference Data
   color: "#3498DB"
   owner: instrument-governance@firm.com
   tech_custodian: instrument-tech@firm.com
   business_steward: product-control@firm.com
-  data_category: Reference Data
   confidentiality: internal
   pii: false
   help_channel: "#instruments-support"
@@ -61,13 +65,14 @@ instruments:
   notes: Security and instrument definitions
 
 analytics:
+  id: 5
   display_name: Analytics
   short_code: ANL
+  category: Derived Data
   color: "#9B59B6"
   owner: analytics-governance@firm.com
   tech_custodian: quant-platform@firm.com
   business_steward: quant-research@firm.com
-  data_category: Derived Data
   confidentiality: internal
   pii: false
   help_channel: "#analytics-support"
@@ -75,13 +80,14 @@ analytics:
   notes: Calculated metrics, signals, and derived analytics
 
 risk:
+  id: 6
   display_name: Risk Management
   short_code: RSK
+  category: Risk Data
   color: "#E74C3C"
   owner: risk-committee@firm.com
   tech_custodian: risk-tech@firm.com
   business_steward: cro-office@firm.com
-  data_category: Risk Data
   confidentiality: confidential
   pii: false
   help_channel: "#risk-data"
@@ -89,13 +95,14 @@ risk:
   notes: Risk metrics, VaR, stress testing, and risk factors
 
 holdings:
+  id: 7
   display_name: Holdings
   short_code: HLD
+  category: Position Data
   color: "#1ABC9C"
   owner: portfolio-ops@firm.com
   tech_custodian: portfolio-tech@firm.com
   business_steward: portfolio-management@firm.com
-  data_category: Position Data
   confidentiality: confidential
   pii: false
   help_channel: "#holdings-support"
@@ -103,13 +110,14 @@ holdings:
   notes: Portfolio positions and holdings data
 
 reports:
+  id: 8
   display_name: Reports
   short_code: RPT
+  category: Reporting Data
   color: "#34495E"
   owner: reporting-team@firm.com
   tech_custodian: reporting-tech@firm.com
   business_steward: finance-ops@firm.com
-  data_category: Reporting Data
   confidentiality: internal
   pii: false
   help_channel: "#reports-support"
@@ -117,13 +125,14 @@ reports:
   notes: Generated reports and regulatory filings
 
 prices:
+  id: 9
   display_name: Prices
   short_code: PRC
+  category: Market Data
   color: "#F39C12"
   owner: pricing-governance@firm.com
   tech_custodian: pricing-tech@firm.com
   business_steward: valuation-committee@firm.com
-  data_category: Market Data
   confidentiality: internal
   pii: false
   help_channel: "#prices-support"
@@ -131,13 +140,14 @@ prices:
   notes: Security prices, valuations, and marks
 
 govies:
+  id: 10
   display_name: Government Bonds
   short_code: GOV
+  category: Market Data
   color: "#2980B9"
   owner: rates-desk@firm.com
   tech_custodian: rates-tech@firm.com
   business_steward: rates-trading@firm.com
-  data_category: Market Data
   confidentiality: internal
   pii: false
   help_channel: "#govies-support"
@@ -145,13 +155,14 @@ govies:
   notes: Government bond data and curves
 
 commods:
+  id: 11
   display_name: Commodities Trading
   short_code: CMT
+  category: Trading Data
   color: "#D35400"
   owner: commods-desk@firm.com
   tech_custodian: commods-tech@firm.com
   business_steward: commods-risk@firm.com
-  data_category: Trading Data
   confidentiality: confidential
   pii: false
   help_channel: "#commods-trading"
@@ -159,13 +170,14 @@ commods:
   notes: Commodities trading positions and P&L
 
 rates:
+  id: 12
   display_name: Rates
   short_code: RTS
+  category: Market Data
   color: "#16A085"
   owner: rates-governance@firm.com
   tech_custodian: rates-tech@firm.com
   business_steward: rates-desk@firm.com
-  data_category: Market Data
   confidentiality: internal
   pii: false
   help_channel: "#rates-data"
@@ -173,13 +185,14 @@ rates:
   notes: Interest rates, curves, and fixed income data
 
 mortgages:
+  id: 13
   display_name: Mortgages
   short_code: MTG
+  category: Structured Products
   color: "#8E44AD"
   owner: mortgage-desk@firm.com
   tech_custodian: mortgage-tech@firm.com
   business_steward: mortgage-risk@firm.com
-  data_category: Structured Products
   confidentiality: confidential
   pii: true
   help_channel: "#mortgage-data"

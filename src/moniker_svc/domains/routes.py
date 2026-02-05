@@ -64,13 +64,14 @@ def _domain_to_model(domain: Domain) -> DomainModel:
     """Convert Domain dataclass to Pydantic model."""
     return DomainModel(
         name=domain.name,
+        id=domain.id,
         display_name=domain.display_name,
         short_code=domain.short_code,
+        category=domain.category,
         color=domain.color,
         owner=domain.owner,
         tech_custodian=domain.tech_custodian,
         business_steward=domain.business_steward,
-        data_category=domain.data_category,
         confidentiality=domain.confidentiality,
         pii=domain.pii,
         help_channel=domain.help_channel,
@@ -166,13 +167,14 @@ async def create_domain(request: CreateDomainRequest):
     # Create the domain
     domain = Domain(
         name=request.name,
+        id=request.id,
         display_name=request.display_name,
         short_code=request.short_code,
+        category=request.category,
         color=request.color,
         owner=request.owner,
         tech_custodian=request.tech_custodian,
         business_steward=request.business_steward,
-        data_category=request.data_category,
         confidentiality=request.confidentiality,
         pii=request.pii,
         help_channel=request.help_channel,
@@ -203,13 +205,14 @@ async def update_domain(name: str, request: UpdateDomainRequest):
     # Build updated domain (only update fields that are not None)
     domain = Domain(
         name=name,
+        id=request.id if request.id is not None else existing.id,
         display_name=request.display_name if request.display_name is not None else existing.display_name,
         short_code=request.short_code if request.short_code is not None else existing.short_code,
+        category=request.category if request.category is not None else existing.category,
         color=request.color if request.color is not None else existing.color,
         owner=request.owner if request.owner is not None else existing.owner,
         tech_custodian=request.tech_custodian if request.tech_custodian is not None else existing.tech_custodian,
         business_steward=request.business_steward if request.business_steward is not None else existing.business_steward,
-        data_category=request.data_category if request.data_category is not None else existing.data_category,
         confidentiality=request.confidentiality if request.confidentiality is not None else existing.confidentiality,
         pii=request.pii if request.pii is not None else existing.pii,
         help_channel=request.help_channel if request.help_channel is not None else existing.help_channel,

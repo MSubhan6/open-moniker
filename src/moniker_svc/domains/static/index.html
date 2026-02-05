@@ -451,14 +451,15 @@
                 <table id="domains-table">
                     <thead>
                         <tr>
+                            <th>#</th>
                             <th>Domain</th>
                             <th>Display Name</th>
                             <th>Code</th>
+                            <th>Category</th>
                             <th>Color</th>
                             <th>Owner</th>
                             <th>Tech Custodian</th>
                             <th>Business Steward</th>
-                            <th>Category</th>
                             <th>Confidentiality</th>
                             <th>PII</th>
                             <th>Help Channel</th>
@@ -469,7 +470,7 @@
                     </thead>
                     <tbody id="domains-body">
                         <tr>
-                            <td colspan="14" class="empty-state">Loading domains...</td>
+                            <td colspan="15" class="empty-state">Loading domains...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -488,14 +489,24 @@
                         <input type="text" class="form-control" id="field-name" placeholder="e.g., derivatives">
                     </div>
                     <div class="form-group">
-                        <label>Display Name</label>
-                        <input type="text" class="form-control" id="field-display_name" placeholder="e.g., Derivatives">
+                        <label>ID #</label>
+                        <input type="number" class="form-control" id="field-id" placeholder="e.g., 14" min="1">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" class="form-control" id="field-display_name" placeholder="e.g., Derivatives">
+                    </div>
+                    <div class="form-group">
                         <label>Short Code</label>
                         <input type="text" class="form-control" id="field-short_code" placeholder="e.g., DRV" maxlength="5">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" class="form-control" id="field-category" placeholder="e.g., Market Data">
                     </div>
                     <div class="form-group">
                         <label>Color</label>
@@ -520,9 +531,7 @@
                         <label>Business Steward</label>
                         <input type="text" class="form-control" id="field-business_steward" placeholder="steward@firm.com">
                     </div>
-                    <div class="form-group">
-                        <label>Data Category</label>
-                        <input type="text" class="form-control" id="field-data_category" placeholder="e.g., Market Data">
+                    <div class="form-group" style="visibility: hidden;">
                     </div>
                 </div>
                 <div class="form-row">
@@ -614,7 +623,7 @@
             if (domains.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="14" class="empty-state">
+                        <td colspan="15" class="empty-state">
                             <h3>No domains configured</h3>
                             <p>Click "Add Domain" to create your first domain</p>
                         </td>
@@ -623,8 +632,17 @@
                 return;
             }
 
-            tbody.innerHTML = domains.map(d => `
+            // Sort domains by id if present
+            const sortedDomains = [...domains].sort((a, b) => {
+                if (a.id !== null && b.id !== null) return a.id - b.id;
+                if (a.id !== null) return -1;
+                if (b.id !== null) return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            tbody.innerHTML = sortedDomains.map(d => `
                 <tr data-name="${d.name}">
+                    <td style="text-align: center; font-weight: bold; color: var(--c-gray);">${d.id !== null ? d.id : '-'}</td>
                     <td>
                         <div class="domain-name">
                             <span class="domain-color-dot" style="background: ${d.color}"></span>
@@ -633,6 +651,7 @@
                     </td>
                     <td class="editable" data-field="display_name" contenteditable="true">${escapeHtml(d.display_name)}</td>
                     <td><span class="short-code">${d.short_code || '-'}</span></td>
+                    <td class="editable" data-field="category" contenteditable="true">${escapeHtml(d.category)}</td>
                     <td>
                         <div class="color-cell">
                             <input type="color" class="color-swatch" value="${d.color}" onchange="updateColor('${d.name}', this.value)">
@@ -642,7 +661,6 @@
                     <td class="editable truncate" data-field="owner" contenteditable="true" title="${escapeHtml(d.owner)}">${escapeHtml(d.owner)}</td>
                     <td class="editable truncate" data-field="tech_custodian" contenteditable="true" title="${escapeHtml(d.tech_custodian)}">${escapeHtml(d.tech_custodian)}</td>
                     <td class="editable truncate" data-field="business_steward" contenteditable="true" title="${escapeHtml(d.business_steward)}">${escapeHtml(d.business_steward)}</td>
-                    <td class="editable" data-field="data_category" contenteditable="true">${escapeHtml(d.data_category)}</td>
                     <td>
                         <select class="badge badge-${d.confidentiality}" onchange="updateField('${d.name}', 'confidentiality', this.value); this.className='badge badge-'+this.value">
                             <option value="public" ${d.confidentiality === 'public' ? 'selected' : ''}>Public</option>
@@ -725,9 +743,10 @@
 
             // Clear fields
             ['name', 'display_name', 'short_code', 'owner', 'tech_custodian',
-             'business_steward', 'data_category', 'help_channel', 'wiki_link', 'notes'].forEach(f => {
+             'business_steward', 'category', 'help_channel', 'wiki_link', 'notes'].forEach(f => {
                 document.getElementById(`field-${f}`).value = '';
             });
+            document.getElementById('field-id').value = '';
             document.getElementById('field-color').value = '#6B7280';
             document.getElementById('field-color-picker').value = '#6B7280';
             document.getElementById('field-confidentiality').value = 'internal';
@@ -747,14 +766,15 @@
 
             // Fill fields
             document.getElementById('field-name').value = domain.name;
+            document.getElementById('field-id').value = domain.id !== null ? domain.id : '';
             document.getElementById('field-display_name').value = domain.display_name;
             document.getElementById('field-short_code').value = domain.short_code;
+            document.getElementById('field-category').value = domain.category;
             document.getElementById('field-color').value = domain.color;
             document.getElementById('field-color-picker').value = domain.color;
             document.getElementById('field-owner').value = domain.owner;
             document.getElementById('field-tech_custodian').value = domain.tech_custodian;
             document.getElementById('field-business_steward').value = domain.business_steward;
-            document.getElementById('field-data_category').value = domain.data_category;
             document.getElementById('field-confidentiality').value = domain.confidentiality;
             document.getElementById('field-pii').value = domain.pii ? 'true' : 'false';
             document.getElementById('field-help_channel').value = domain.help_channel;
@@ -770,15 +790,17 @@
         }
 
         async function saveModal() {
+            const idVal = document.getElementById('field-id').value.trim();
             const payload = {
                 name: document.getElementById('field-name').value.trim(),
+                id: idVal ? parseInt(idVal, 10) : null,
                 display_name: document.getElementById('field-display_name').value.trim(),
                 short_code: document.getElementById('field-short_code').value.trim(),
+                category: document.getElementById('field-category').value.trim(),
                 color: document.getElementById('field-color').value.trim(),
                 owner: document.getElementById('field-owner').value.trim(),
                 tech_custodian: document.getElementById('field-tech_custodian').value.trim(),
                 business_steward: document.getElementById('field-business_steward').value.trim(),
-                data_category: document.getElementById('field-data_category').value.trim(),
                 confidentiality: document.getElementById('field-confidentiality').value,
                 pii: document.getElementById('field-pii').value === 'true',
                 help_channel: document.getElementById('field-help_channel').value.trim(),

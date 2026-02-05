@@ -418,7 +418,7 @@ def option_16_view_domain():
         print(f"    Business Steward: {domain.get('business_steward')}")
 
         print(f"\n  {C.BOLD}Classification:{C.RESET}")
-        print(f"    Data Category:   {domain.get('data_category')}")
+        print(f"    Category:        {domain.get('category')}")
         conf = domain.get('confidentiality', 'internal')
         conf_color = C.RED if conf in ('confidential', 'strictly_confidential') else C.YELLOW
         print(f"    Confidentiality: {conf_color}{conf}{C.RESET}")
