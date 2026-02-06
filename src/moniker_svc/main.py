@@ -733,7 +733,6 @@ Resolves monikers (semantic data paths) to source connection info.
     version="0.2.0",
     contact={"name": "Data Platform Team"},
     lifespan=lifespan,
-    redoc_url=None,  # Disabled - doesn't work reliably
     openapi_tags=[
         {"name": "Resolution", "description": "Resolve monikers to connection info for client-side execution"},
         {"name": "Data Fetch", "description": "Server-side data retrieval and metadata"},
