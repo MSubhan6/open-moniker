@@ -191,6 +191,7 @@ class TreeNodeResponse(BaseModel):
     source_type: str | None = None
     has_source_binding: bool = False
     description: str | None = None
+    domain: str | None = None
 
 
 # Enable self-referencing in TreeNodeResponse
@@ -1467,6 +1468,7 @@ async def get_tree(
             source_type=source_type,
             has_source_binding=has_source_binding,
             description=node.description,
+            domain=node.domain,
         )
 
     tree = build_tree_node(path)
@@ -1542,6 +1544,7 @@ async def get_tree_root(
             source_type=source_type,
             has_source_binding=has_source_binding,
             description=node.description,
+            domain=node.domain,
         )
 
     # Get root-level nodes
@@ -1995,6 +1998,7 @@ _UI_HTML = """
 
         /* Filter styles */
         .filtered-out { display: none !important; }
+        .category-hidden { display: none !important; }
         .filter-match > .node .node-name { background: rgba(255, 209, 0, 0.3); padding: 0 4px; border-radius: 2px; }
         .filter-active-indicator {
             display: none;
@@ -2014,6 +2018,46 @@ _UI_HTML = """
             font-size: 12px;
         }
         .filter-active-indicator button:hover { background: var(--color-bg); }
+
+        /* Category filter chips */
+        .category-bar {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            background: var(--color-bg);
+        }
+        .category-chip {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--c-gray);
+            transition: all 0.15s;
+        }
+        .category-chip:hover {
+            border-color: var(--c-peacock);
+            color: var(--c-peacock);
+        }
+        .category-chip.active {
+            background: var(--c-peacock);
+            border-color: var(--c-peacock);
+            color: white;
+        }
+        .category-chip.all {
+            background: var(--c-navy);
+            border-color: var(--c-navy);
+            color: white;
+        }
+        .category-chip.all:not(.active) {
+            background: white;
+            color: var(--c-navy);
+            border-color: var(--c-navy);
+        }
     </style>
 </head>
 <body>
@@ -2034,6 +2078,9 @@ _UI_HTML = """
                     <button class="btn-small" onclick="expandAll()">Expand All</button>
                     <button class="btn-small" onclick="collapseAll()">Collapse All</button>
                 </div>
+            </div>
+            <div id="category-bar" class="category-bar" style="display: none;">
+                <!-- Categories populated by JS -->
             </div>
             <div class="search-box">
                 <input type="text" id="search-input" placeholder="Search catalog... (Enter to filter)"
@@ -2331,7 +2378,93 @@ _UI_HTML = """
             document.getElementById('search-input').value = '';
         }
 
+        // Category filtering
+        let domainData = {};  // domain name -> {category, ...}
+        let activeCategory = null;
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('/domains');
+                const data = await res.json();
+                if (!data.domains || data.domains.length === 0) return;
+
+                // Build domain lookup and extract categories
+                const categories = new Map();  // category -> [domain names]
+                data.domains.forEach(d => {
+                    domainData[d.name] = d;
+                    const cat = d.data_category || 'Uncategorized';
+                    if (!categories.has(cat)) categories.set(cat, []);
+                    categories.get(cat).push(d.name);
+                });
+
+                // Render category chips if we have multiple categories
+                if (categories.size > 1) {
+                    const bar = document.getElementById('category-bar');
+                    let html = '<span class="category-chip all active" onclick="filterByCategory(null)">All</span>';
+                    [...categories.keys()].sort().forEach(cat => {
+                        html += `<span class="category-chip" onclick="filterByCategory('${cat}')">${cat}</span>`;
+                    });
+                    bar.innerHTML = html;
+                    bar.style.display = 'flex';
+                }
+            } catch (e) {
+                console.error('Failed to load categories:', e);
+            }
+        }
+
+        function filterByCategory(category) {
+            activeCategory = category;
+
+            // Update chip styles
+            document.querySelectorAll('.category-chip').forEach(chip => {
+                chip.classList.remove('active');
+                if (category === null && chip.classList.contains('all')) {
+                    chip.classList.add('active');
+                } else if (chip.textContent === category) {
+                    chip.classList.add('active');
+                }
+            });
+
+            // Get domains in this category
+            let allowedDomains = null;
+            if (category) {
+                allowedDomains = new Set();
+                Object.entries(domainData).forEach(([name, d]) => {
+                    if ((d.data_category || 'Uncategorized') === category) {
+                        allowedDomains.add(name);
+                    }
+                });
+            }
+
+            // Filter tree nodes
+            const allNodes = document.querySelectorAll('.tree li');
+            allNodes.forEach(li => {
+                const node = JSON.parse(li.dataset.node);
+                li.classList.remove('category-hidden');
+
+                if (allowedDomains !== null) {
+                    // Check if this node or any ancestor/descendant matches
+                    const nodeDomain = node.domain || node.path.split('/')[0];
+                    if (!allowedDomains.has(nodeDomain)) {
+                        li.classList.add('category-hidden');
+                    }
+                }
+            });
+
+            // Show parents of visible nodes
+            document.querySelectorAll('.tree li:not(.category-hidden)').forEach(li => {
+                let parent = li.parentElement;
+                while (parent) {
+                    if (parent.tagName === 'LI') {
+                        parent.classList.remove('category-hidden');
+                    }
+                    parent = parent.parentElement;
+                }
+            });
+        }
+
         loadTree();
+        loadCategories();
     </script>
 </body>
 </html>
