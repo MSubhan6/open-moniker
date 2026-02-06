@@ -262,6 +262,11 @@
         li.filtered-out {
             display: none;
         }
+        li.filter-match > .node .node-name {
+            background: rgba(255, 209, 0, 0.3);
+            padding: 0 4px;
+            border-radius: 2px;
+        }
 
         /* Domain info banner in form */
         .domain-info {
@@ -908,10 +913,15 @@
                 <!-- Categories populated by JS -->
             </div>
             <div class="search-box" style="padding: 8px; border-bottom: 1px solid var(--border);">
-                <input type="text" id="search-input" placeholder="Search catalog..."
+                <input type="text" id="search-input" placeholder="Search catalog... (Enter to filter)"
                        style="width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px;"
-                       oninput="handleSearch(this.value)">
+                       oninput="handleSearch(this.value)"
+                       onkeydown="handleSearchKeydown(event)">
                 <div id="search-results" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 4px; background: white; border: 1px solid var(--border); border-radius: 4px;"></div>
+            </div>
+            <div id="filter-indicator" style="display: none; padding: 6px 12px; background: rgba(255, 209, 0, 0.15); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--c-gray); justify-content: space-between; align-items: center;">
+                <span>Filtered: <strong id="filter-term"></strong> (<span id="filter-count"></span> matches)</span>
+                <button onclick="clearFilter()" style="background: none; border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Clear</button>
             </div>
             <div class="tree-container">
                 <div id="tree" class="tree"><div class="loading">Loading...</div></div>
@@ -1441,6 +1451,82 @@
                 const node = document.querySelector(`.tree li[data-path="${currentPath}"]`);
                 if (node) node.classList.remove('collapsed');
             }
+        }
+
+        // Filter functionality (Enter key) - same as Catalog Browser
+        function handleSearchKeydown(e) {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query.length >= 2) {
+                    filterTree(query);
+                    document.getElementById('search-results').style.display = 'none';
+                }
+            } else if (e.key === 'Escape') {
+                clearFilter();
+                e.target.value = '';
+                document.getElementById('search-results').style.display = 'none';
+            }
+        }
+
+        function filterTree(query) {
+            const queryLower = query.toLowerCase();
+            const allNodes = document.querySelectorAll('.tree li');
+            let matchCount = 0;
+
+            // First pass: mark all as filtered out, find matches
+            allNodes.forEach(li => {
+                li.classList.add('filtered-out');
+                li.classList.remove('filter-match');
+
+                const path = li.dataset.path || '';
+                const nodeData = nodes.find(n => n.path === path);
+                const searchText = [
+                    path,
+                    nodeData?.display_name || '',
+                    nodeData?.description || '',
+                    (nodeData?.tags || []).join(' ')
+                ].join(' ').toLowerCase();
+
+                if (searchText.includes(queryLower)) {
+                    li.classList.add('filter-match');
+                    matchCount++;
+                }
+            });
+
+            // Second pass: show matches and their ancestors
+            document.querySelectorAll('.tree li.filter-match').forEach(li => {
+                li.classList.remove('filtered-out');
+                li.classList.remove('collapsed');
+
+                // Show all ancestors
+                let parent = li.parentElement;
+                while (parent) {
+                    if (parent.tagName === 'LI') {
+                        parent.classList.remove('filtered-out');
+                        parent.classList.remove('collapsed');
+                    }
+                    parent = parent.parentElement;
+                }
+
+                // Also show direct children
+                li.querySelectorAll(':scope > ul > li').forEach(child => {
+                    child.classList.remove('filtered-out');
+                });
+            });
+
+            // Show filter indicator
+            document.getElementById('filter-term').textContent = query;
+            document.getElementById('filter-count').textContent = matchCount;
+            document.getElementById('filter-indicator').style.display = 'flex';
+        }
+
+        function clearFilter() {
+            document.querySelectorAll('.tree li').forEach(li => {
+                li.classList.remove('filtered-out');
+                li.classList.remove('filter-match');
+            });
+            document.getElementById('filter-indicator').style.display = 'none';
+            document.getElementById('search-input').value = '';
         }
 
         // =============================================================================
