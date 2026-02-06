@@ -1047,7 +1047,8 @@
 
         async function deleteNode() {
             if (!selectedPath) return;
-            if (!confirm(`Delete node "${selectedPath}"?`)) return;
+            const nodeName = selectedPath.split('/').pop();
+            if (!confirm(`Delete node "${nodeName}"?`)) return;
 
             try {
                 await fetchJSON(`${API_BASE}/nodes/${encodeURIComponent(selectedPath)}`, {
@@ -1055,7 +1056,7 @@
                 });
                 // Auto-persist to YAML
                 await fetchJSON(`${API_BASE}/save`, { method: 'POST' });
-                showToast('Node deleted', 'success');
+                showToast(`Deleted: ${nodeName}`, 'success');
                 selectedPath = null;
                 originalNode = null;
                 document.getElementById('form-container').innerHTML = `
