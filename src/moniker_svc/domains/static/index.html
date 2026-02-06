@@ -458,6 +458,7 @@
                         <tr>
                             <th>#</th>
                             <th>Category</th>
+                            <th>Code</th>
                             <th>Domain Name</th>
                             <th>Owner</th>
                             <th>Tech Custodian</th>
@@ -473,7 +474,7 @@
                     </thead>
                     <tbody id="domains-body">
                         <tr>
-                            <td colspan="13" class="empty-state">Loading domains...</td>
+                            <td colspan="14" class="empty-state">Loading domains...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -616,7 +617,7 @@
             if (domains.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="15" class="empty-state">
+                        <td colspan="14" class="empty-state">
                             <h3>No domains configured</h3>
                             <p>Click "Add Domain" to create your first domain</p>
                         </td>
@@ -639,12 +640,12 @@
                 <tr data-name="${d.name}">
                     <td style="text-align: center; font-weight: bold; color: var(--c-gray);">${index + 1}</td>
                     <td class="editable" data-field="data_category" contenteditable="true">${escapeHtml(d.data_category)}</td>
+                    <td><span class="short-code">${escapeHtml(d.short_code || '')}</span></td>
                     <td>
                         <div class="domain-name">
                             <span class="domain-color-dot" style="background: ${d.color}"></span>
                             <strong>${escapeHtml(d.name)}</strong>
                             ${d.display_name && d.display_name !== d.name ? ` - ${escapeHtml(d.display_name)}` : ''}
-                            ${d.short_code ? ` <span class="short-code">${escapeHtml(d.short_code)}</span>` : ''}
                         </div>
                     </td>
                     <td class="editable truncate" data-field="owner" contenteditable="true" title="${escapeHtml(d.owner)}">${escapeHtml(d.owner)}</td>
