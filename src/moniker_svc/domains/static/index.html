@@ -488,15 +488,9 @@
         <div class="modal">
             <div class="modal-header" id="modal-title">Add Domain</div>
             <div class="modal-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Domain Name *</label>
-                        <input type="text" class="form-control" id="field-name" placeholder="e.g., derivatives">
-                    </div>
-                    <div class="form-group">
-                        <label>ID #</label>
-                        <input type="number" class="form-control" id="field-id" placeholder="e.g., 14" min="1">
-                    </div>
+                <div class="form-group">
+                    <label>Domain Name *</label>
+                    <input type="text" class="form-control" id="field-name" placeholder="e.g., derivatives">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -649,7 +643,7 @@
 
             tbody.innerHTML = sortedDomains.map((d, index) => `
                 <tr data-name="${d.name}">
-                    <td style="text-align: center; font-weight: bold; color: var(--c-gray);">${d.id !== null ? d.id : (index + 1)}</td>
+                    <td style="text-align: center; font-weight: bold; color: var(--c-gray);">${index + 1}</td>
                     <td class="editable" data-field="data_category" contenteditable="true">${escapeHtml(d.data_category)}</td>
                     <td>
                         <div class="domain-name">
@@ -752,7 +746,6 @@
              'business_steward', 'data_category', 'help_channel', 'wiki_link', 'notes'].forEach(f => {
                 document.getElementById(`field-${f}`).value = '';
             });
-            document.getElementById('field-id').value = '';
             document.getElementById('field-color').value = '#6B7280';
             document.getElementById('field-color-picker').value = '#6B7280';
             document.getElementById('field-confidentiality').value = 'internal';
@@ -772,7 +765,6 @@
 
             // Fill fields
             document.getElementById('field-name').value = domain.name;
-            document.getElementById('field-id').value = domain.id !== null ? domain.id : '';
             document.getElementById('field-display_name').value = domain.display_name;
             document.getElementById('field-short_code').value = domain.short_code;
             document.getElementById('field-data_category').value = domain.data_category;
@@ -796,13 +788,11 @@
         }
 
         async function saveModal() {
-            const idVal = document.getElementById('field-id').value.trim();
             const payload = {
                 name: document.getElementById('field-name').value.trim(),
-                id: idVal ? parseInt(idVal, 10) : null,
                 display_name: document.getElementById('field-display_name').value.trim(),
                 short_code: document.getElementById('field-short_code').value.trim(),
-                category: document.getElementById('field-data_category').value.trim(),
+                data_category: document.getElementById('field-data_category').value.trim(),
                 color: document.getElementById('field-color').value.trim(),
                 owner: document.getElementById('field-owner').value.trim(),
                 tech_custodian: document.getElementById('field-tech_custodian').value.trim(),
