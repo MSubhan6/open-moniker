@@ -1432,6 +1432,9 @@
                         ${renderOwnershipField('accountable_owner', 'Accountable Owner', node.ownership, resolved)}
                         ${renderOwnershipField('data_specialist', 'Data Specialist', node.ownership, resolved)}
                         ${renderOwnershipField('support_channel', 'Support Channel', node.ownership, resolved)}
+                        ${renderOwnershipField('adop', 'ADOP', node.ownership, resolved)}
+                        ${renderOwnershipField('ads', 'ADS', node.ownership, resolved)}
+                        ${renderOwnershipField('adal', 'ADAL', node.ownership, resolved)}
                     </div>
                 </div>
 
@@ -1904,7 +1907,7 @@
 
             // Ownership
             const ownership = {};
-            ['accountable_owner', 'data_specialist', 'support_channel'].forEach(field => {
+            ['accountable_owner', 'data_specialist', 'support_channel', 'adop', 'ads', 'adal'].forEach(field => {
                 const val = document.getElementById(`own_${field}`)?.value;
                 if (val) ownership[field] = val;
             });
@@ -2085,6 +2088,17 @@
         async function init() {
             await Promise.all([loadSourceTypes(), loadDomains()]);
             await loadNodes();
+
+            // Handle URL hash to auto-select node (e.g., /config/ui#some/path)
+            if (window.location.hash) {
+                const path = decodeURIComponent(window.location.hash.slice(1));
+                if (path) {
+                    setTimeout(() => {
+                        expandToPath(path);
+                        selectNode(path);
+                    }, 100);
+                }
+            }
         }
 
         init();

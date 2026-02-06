@@ -2142,6 +2142,18 @@ _UI_HTML = """
                         </div>
                     ` : ''}
                 </div>
+
+                <div class="detail-section">
+                    <h3>Quick Links</h3>
+                    <div class="detail-row" style="border:none">
+                        <a href="/config/ui#${node.path}" target="_blank">📝 Edit in Config UI</a>
+                    </div>
+                    ${ownership.adal ? `
+                        <div class="detail-row" style="border:none">
+                            <a href="${ownership.adal}" target="_blank">📋 ADAL Documentation</a>
+                        </div>
+                    ` : ''}
+                </div>
             `;
             document.getElementById('details').innerHTML = html;
         }
