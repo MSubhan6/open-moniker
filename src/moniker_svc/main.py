@@ -1986,6 +1986,28 @@ _UI_HTML = """
         .search-result:hover { background: rgba(0, 85, 135, 0.08); }
         .search-result-path { font-weight: 700; color: var(--c-navy); }
         .search-result-match { font-size: 11px; color: var(--c-gray); margin-top: 2px; }
+
+        /* Filter styles */
+        .filtered-out { display: none !important; }
+        .filter-match > .node .node-name { background: rgba(255, 209, 0, 0.3); padding: 0 4px; border-radius: 2px; }
+        .filter-active-indicator {
+            display: none;
+            padding: 6px 12px;
+            background: rgba(255, 209, 0, 0.15);
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--c-gray);
+        }
+        .filter-active-indicator.visible { display: flex; justify-content: space-between; align-items: center; }
+        .filter-active-indicator button {
+            background: none;
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .filter-active-indicator button:hover { background: var(--color-bg); }
     </style>
 </head>
 <body>
@@ -2008,8 +2030,14 @@ _UI_HTML = """
                 </div>
             </div>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Search catalog..." oninput="handleSearch(this.value)">
+                <input type="text" id="search-input" placeholder="Search catalog... (Enter to filter)"
+                       oninput="handleSearch(this.value)"
+                       onkeydown="handleSearchKeydown(event)">
                 <div id="search-results" class="search-results"></div>
+            </div>
+            <div id="filter-indicator" class="filter-active-indicator">
+                <span>Filtered: <strong id="filter-term"></strong> (<span id="filter-count"></span> matches)</span>
+                <button onclick="clearFilter()">Clear filter</button>
             </div>
             <div class="panel-content">
                 <div id="tree" class="tree"><div class="loading">Loading...</div></div>
@@ -2199,6 +2227,83 @@ _UI_HTML = """
                 document.getElementById('search-results').style.display = 'none';
             }
         });
+
+        // Filter functionality (Enter key)
+        function handleSearchKeydown(e) {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query.length >= 2) {
+                    filterTree(query);
+                    document.getElementById('search-results').style.display = 'none';
+                }
+            } else if (e.key === 'Escape') {
+                clearFilter();
+                e.target.value = '';
+                document.getElementById('search-results').style.display = 'none';
+            }
+        }
+
+        function filterTree(query) {
+            const queryLower = query.toLowerCase();
+            const allNodes = document.querySelectorAll('.tree li');
+            let matchCount = 0;
+
+            // First pass: mark all as filtered out, find matches
+            allNodes.forEach(li => {
+                li.classList.add('filtered-out');
+                li.classList.remove('filter-match');
+
+                const node = JSON.parse(li.dataset.node);
+                const searchText = [
+                    node.path,
+                    node.name,
+                    node.description || '',
+                    node.display_name || '',
+                    (node.tags || []).join(' ')
+                ].join(' ').toLowerCase();
+
+                if (searchText.includes(queryLower)) {
+                    li.classList.add('filter-match');
+                    matchCount++;
+                }
+            });
+
+            // Second pass: show matches and their ancestors
+            document.querySelectorAll('.tree li.filter-match').forEach(li => {
+                // Show this node
+                li.classList.remove('filtered-out');
+                li.classList.remove('collapsed');
+
+                // Show all ancestors
+                let parent = li.parentElement;
+                while (parent) {
+                    if (parent.tagName === 'LI') {
+                        parent.classList.remove('filtered-out');
+                        parent.classList.remove('collapsed');
+                    }
+                    parent = parent.parentElement;
+                }
+
+                // Also show direct children (one level down)
+                li.querySelectorAll(':scope > ul > li').forEach(child => {
+                    child.classList.remove('filtered-out');
+                });
+            });
+
+            // Show filter indicator
+            document.getElementById('filter-term').textContent = query;
+            document.getElementById('filter-count').textContent = matchCount;
+            document.getElementById('filter-indicator').classList.add('visible');
+        }
+
+        function clearFilter() {
+            document.querySelectorAll('.tree li').forEach(li => {
+                li.classList.remove('filtered-out');
+                li.classList.remove('filter-match');
+            });
+            document.getElementById('filter-indicator').classList.remove('visible');
+            document.getElementById('search-input').value = '';
+        }
 
         loadTree();
     </script>
