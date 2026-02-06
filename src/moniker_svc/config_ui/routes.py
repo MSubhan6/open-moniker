@@ -43,12 +43,14 @@ router = APIRouter(prefix="/config", tags=["Config UI"])
 _catalog: CatalogRegistry | None = None
 _yaml_output_path: str = "catalog_output.yaml"
 _catalog_definition_file: str | None = None
+_service_cache = None  # Optional cache to clear on changes
 
 
 def configure(
     catalog: CatalogRegistry,
     yaml_output_path: str = "catalog_output.yaml",
     catalog_definition_file: str | None = None,
+    service_cache=None,
 ) -> None:
     """Configure the Config UI routes.
 
@@ -56,11 +58,20 @@ def configure(
         catalog: The catalog registry to manage
         yaml_output_path: Path for YAML output file
         catalog_definition_file: Path to catalog definition file for reload
+        service_cache: Optional cache to clear when catalog changes
     """
-    global _catalog, _yaml_output_path, _catalog_definition_file
+    global _catalog, _yaml_output_path, _catalog_definition_file, _service_cache
     _catalog = catalog
     _yaml_output_path = yaml_output_path
     _catalog_definition_file = catalog_definition_file
+    _service_cache = service_cache
+
+
+def _clear_cache():
+    """Clear the service cache if configured."""
+    if _service_cache is not None:
+        _service_cache.clear()
+        logger.debug("Cleared service cache after catalog change")
 
 
 def _get_catalog() -> CatalogRegistry:
@@ -258,6 +269,7 @@ async def create_node(request: CreateNodeRequest):
 
     # Register it
     catalog.register(node)
+    _clear_cache()
 
     logger.info(f"Created node: {request.path}")
 
@@ -279,6 +291,7 @@ async def update_node(path: str, request: UpdateNodeRequest):
 
     # Re-register (overwrites)
     catalog.register(node)
+    _clear_cache()
 
     logger.info(f"Updated node: {path}")
 
@@ -311,6 +324,7 @@ async def delete_node(path: str):
             if parent_path is not None and parent_path in catalog._children:
                 catalog._children[parent_path].discard(path)
 
+    _clear_cache()
     logger.info(f"Deleted node: {path}")
 
     return DeleteResponse(
