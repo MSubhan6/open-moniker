@@ -279,36 +279,24 @@ def handle_list(moniker: str, note: str = ""):
 
 
 def handle_sample(moniker: str, note: str = ""):
-    """Generic sample handler."""
-    print(f"\nSampling: {colorize_moniker('moniker://' + moniker)}")
+    """Resolve moniker and show query/connection info."""
+    print(f"\nResolving: {colorize_moniker('moniker://' + moniker)}")
     if note:
         print(f"{C.GRAY}{note}{C.RESET}\n")
 
-    # First resolve to check source type - some are client-execute only
-    resolve_result = fetch_api(f"/resolve/{moniker}")
-    if resolve_result:
-        source_type = resolve_result.get('source_type', '')
-        # Client-execute sources can't be sampled server-side
-        client_execute_types = {'oracle', 'snowflake', 'bloomberg', 'refinitiv'}
-        if source_type in client_execute_types:
-            print(f"  {C.YELLOW}[Client Execute]{C.RESET} {source_type} - sample not available server-side")
-            print(f"  {C.BOLD}Query:{C.RESET}")
-            query = resolve_result.get('query', 'N/A')
-            # Truncate long queries
-            if len(query) > 200:
-                query = query[:200] + "..."
-            print(f"    {C.CYAN}{query}{C.RESET}")
-            return
-
-    result = fetch_api(f"/sample/{moniker}?limit=3")
+    result = fetch_api(f"/resolve/{moniker}")
     if result:
-        print(f"  {C.BOLD}Columns:{C.RESET} {result.get('columns', [])}")
-        print(f"  {C.BOLD}Row count:{C.RESET} {result.get('row_count', 0)}")
+        source_type = result.get('source_type', 'unknown')
+        print(f"  {C.BOLD}Source Type:{C.RESET} {C.YELLOW}{source_type}{C.RESET}")
 
-        if result.get('data'):
-            print(f"\n  {C.BOLD}Sample rows:{C.RESET}")
-            for row in result['data']:
-                print(f"    {row}")
+        query = result.get('query')
+        if query:
+            print(f"  {C.BOLD}Query:{C.RESET}")
+            print(f"    {C.CYAN}{query}{C.RESET}")
+
+        connection = result.get('connection')
+        if connection:
+            print(f"  {C.BOLD}Connection:{C.RESET} {connection}")
 
 
 def handle_metadata(moniker: str, note: str = ""):
