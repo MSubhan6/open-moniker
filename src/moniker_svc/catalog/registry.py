@@ -267,19 +267,48 @@ class CatalogRegistry:
 
     @staticmethod
     def _parent_path(path: str) -> str | None:
-        """Get parent path, or None if at root."""
-        if "/" not in path:
-            return ""  # Parent is root
-        parts = path.rsplit("/", 1)
-        return parts[0] if parts[0] else None
+        """Get parent path, or None if at root.
+
+        Handles both '.' and '/' as hierarchy separators.
+        Examples:
+            'analytics.risk/var' -> 'analytics.risk'
+            'analytics.risk' -> 'analytics'
+            'analytics' -> '' (root)
+        """
+        if not path:
+            return None
+        # Check for '/' first (more specific), then '.'
+        if "/" in path:
+            return path.rsplit("/", 1)[0]
+        if "." in path:
+            return path.rsplit(".", 1)[0]
+        return ""  # Parent is root
 
     @staticmethod
     def _ancestor_paths(path: str) -> list[str]:
-        """Get all ancestor paths from root to parent."""
+        """Get all ancestor paths from root to parent.
+
+        Handles both '.' and '/' as hierarchy separators.
+        Example: 'analytics.risk/var' -> ['analytics', 'analytics.risk']
+        """
         if not path:
             return []
-        parts = path.split("/")
+
         result = []
-        for i in range(1, len(parts)):
-            result.append("/".join(parts[:i]))
+        current = path
+        while True:
+            # Find parent by removing last segment (either after '/' or '.')
+            if "/" in current:
+                parent = current.rsplit("/", 1)[0]
+            elif "." in current:
+                parent = current.rsplit(".", 1)[0]
+            else:
+                break  # No more parents
+
+            if parent:
+                result.insert(0, parent)  # Insert at beginning to maintain root->parent order
+                current = parent
+            else:
+                break
+
         return result
