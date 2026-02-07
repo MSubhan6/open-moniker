@@ -34,7 +34,11 @@ from moniker_data.adapters.oracle import reset_db as reset_oracle_db
 # Import from moniker-svc package
 from moniker_svc.cache.memory import InMemoryCache
 from moniker_svc.catalog.loader import load_catalog
+from moniker_svc.catalog.registry import CatalogRegistry
+from moniker_svc.catalog.types import CatalogNode, Ownership, SourceBinding, SourceType
 from moniker_svc.config import Config
+from moniker_svc.domains.registry import DomainRegistry
+from moniker_svc.domains.types import Domain
 from moniker_svc.service import MonikerService
 from moniker_svc.telemetry.emitter import TelemetryEmitter
 from moniker_svc.telemetry.events import CallerIdentity
@@ -162,6 +166,63 @@ def reset_mocks():
 
 
 # =============================================================================
+# Domain Fixtures
+# =============================================================================
+
+@pytest.fixture
+def domain_registry() -> DomainRegistry:
+    """Domain registry with sample domains for testing."""
+    registry = DomainRegistry()
+
+    registry.register(Domain(
+        name="risk",
+        id=1,
+        display_name="Risk Analytics",
+        short_code="RSK",
+        data_category="Analytics",
+        owner="risk-governance@firm.com",
+        tech_custodian="risk-tech@firm.com",
+        help_channel="#risk-data",
+    ))
+
+    registry.register(Domain(
+        name="indices",
+        id=2,
+        display_name="Market Indices",
+        short_code="IDX",
+        data_category="Market Data",
+        owner="market-data@firm.com",
+        tech_custodian="market-tech@firm.com",
+        help_channel="#market-data",
+    ))
+
+    registry.register(Domain(
+        name="commodities",
+        id=3,
+        display_name="Commodities",
+        short_code="CMD",
+        data_category="Market Data",
+        owner="commodities@firm.com",
+        tech_custodian="commodities-tech@firm.com",
+        help_channel="#commodities-data",
+    ))
+
+    return registry
+
+
+@pytest.fixture
+def service_with_domains(catalog_registry, cache, telemetry, config, domain_registry) -> MonikerService:
+    """MonikerService instance with domain registry for testing ownership inheritance."""
+    return MonikerService(
+        catalog=catalog_registry,
+        cache=cache,
+        telemetry=telemetry,
+        config=config,
+        domain_registry=domain_registry,
+    )
+
+
+# =============================================================================
 # Test Markers
 # =============================================================================
 
@@ -173,3 +234,4 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "govies: tests for govies domain")
     config.addinivalue_line("markers", "rates: tests for rates domain")
     config.addinivalue_line("markers", "mortgages: tests for mortgages domain")
+    config.addinivalue_line("markers", "domains: tests for domain mapping and ownership inheritance")

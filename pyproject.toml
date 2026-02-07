@@ -40,6 +40,11 @@ testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "risk: tests for risk domain",
+    "govies: tests for govies domain",
+    "rates: tests for rates domain",
+    "mortgages: tests for mortgages domain",
+    "domains: tests for domain mapping and ownership inheritance",
 ]
 
 [tool.hatch.build.targets.wheel]
