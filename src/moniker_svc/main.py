@@ -1964,6 +1964,11 @@ _LANDING_HTML = """
                 <p>Browse discovered SQL statements, schemas, and table relationships.</p>
                 <a href="/sql/ui">SQL Catalog Browser</a>
             </div>
+            <div class="card">
+                <h2>Business Models</h2>
+                <p>Manage business models (measures, metrics, fields) that appear across monikers.</p>
+                <a href="/models/ui">Models Browser</a>
+            </div>
         </div>
 
         <h3 class="section-title">API Documentation</h3>
@@ -1986,6 +1991,11 @@ _LANDING_HTML = """
                 <h2>Domains</h2>
                 <p>List all configured data domains with governance info.</p>
                 <a href="/domains">Domains API</a>
+            </div>
+            <div class="card api">
+                <h2>Models</h2>
+                <p>List all business models with their moniker mappings.</p>
+                <a href="/models">Models API</a>
             </div>
             <div class="card api">
                 <h2>Catalog Paths</h2>
@@ -2200,6 +2210,58 @@ _UI_HTML = """
         /* Loading */
         .loading { text-align: center; padding: 40px; color: var(--c-gray); }
 
+        /* Business Models */
+        .models-list { display: flex; flex-direction: column; gap: 8px; }
+        .model-card {
+            background: var(--color-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .model-name {
+            font-weight: 700;
+            color: var(--c-navy);
+            font-size: 13px;
+        }
+        .model-unit {
+            background: var(--c-peacock);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .model-desc {
+            font-size: 12px;
+            color: var(--c-gray);
+            margin-bottom: 4px;
+        }
+        .model-formula {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+            background: rgba(0, 85, 135, 0.08);
+            padding: 4px 8px;
+            border-radius: 3px;
+            color: var(--c-peacock);
+            margin-bottom: 4px;
+        }
+        .model-link {
+            font-size: 11px;
+        }
+        .model-link a {
+            color: var(--c-peacock);
+            text-decoration: none;
+        }
+        .model-link a:hover {
+            text-decoration: underline;
+        }
+
         /* Search */
         .search-box {
             padding: 12px 16px;
@@ -2401,9 +2463,11 @@ _UI_HTML = """
             showDetails(node);
         }
 
-        function showDetails(node) {
+        async function showDetails(node) {
             const ownership = node.ownership || {};
-            const html = `
+
+            // Build base HTML first
+            let html = `
                 <div class="path-display">moniker://${node.path}</div>
 
                 <div class="detail-section">
@@ -2418,6 +2482,8 @@ _UI_HTML = """
                     ${detailRow('Has Binding', node.has_source_binding ? 'Yes' : 'No')}
                     ${detailRow('Type', node.source_type || '-')}
                 </div>
+
+                <div id="models-section"></div>
 
                 <div class="detail-section">
                     <h3>Ownership</h3>
@@ -2466,6 +2532,46 @@ _UI_HTML = """
                 </div>
             `;
             document.getElementById('details').innerHTML = html;
+
+            // Fetch and display linked business models asynchronously
+            loadModelsForMoniker(node.path);
+        }
+
+        async function loadModelsForMoniker(path) {
+            const modelsSection = document.getElementById('models-section');
+            try {
+                const res = await fetch('/models/for-moniker/' + encodeURIComponent(path));
+                if (!res.ok) return;
+
+                const data = await res.json();
+                if (!data.models || data.models.length === 0) {
+                    modelsSection.innerHTML = '';
+                    return;
+                }
+
+                const modelsHtml = data.models.map(m => `
+                    <div class="model-card">
+                        <div class="model-header">
+                            <span class="model-name">${m.display_name || m.path}</span>
+                            ${m.unit ? `<span class="model-unit">${m.unit}</span>` : ''}
+                        </div>
+                        ${m.description ? `<div class="model-desc">${m.description}</div>` : ''}
+                        ${m.formula ? `<div class="model-formula">${m.formula}</div>` : ''}
+                        ${m.documentation_url ? `<div class="model-link"><a href="${m.documentation_url}" target="_blank">Documentation</a></div>` : ''}
+                    </div>
+                `).join('');
+
+                modelsSection.innerHTML = `
+                    <div class="detail-section">
+                        <h3>Business Models (${data.count})</h3>
+                        <div class="models-list">
+                            ${modelsHtml}
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Failed to load models:', e);
+            }
         }
 
         function detailRow(label, value) {

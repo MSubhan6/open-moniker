@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Models Browser</title>
+    <style>
+        :root {
+            --font-sans: Arial, Helvetica, sans-serif;
+            --c-navy: #022D5E;
+            --c-gray: #53565A;
+            --c-peacock: #005587;
+            --c-olive: #789D4A;
+            --c-green: #009639;
+            --c-teal: #00897B;
+            --color-bg: #f8f9fa;
+            --color-surface: #ffffff;
+            --color-text: #111111;
+            --border: rgba(83, 86, 90, 0.25);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--color-bg);
+            color: var(--color-text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: var(--c-navy);
+            padding: 16px 24px;
+            border-bottom: 3px solid var(--c-peacock);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            margin: 0;
+        }
+        .btn-home {
+            padding: 8px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            color: white;
+            text-decoration: none;
+        }
+        .btn-home:hover { background: rgba(255,255,255,0.25); }
+
+        .main {
+            display: flex;
+            flex: 1;
+            padding: 24px;
+            gap: 24px;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--color-surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: auto;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .tree-panel { flex: 1; max-width: 400px; }
+        .detail-panel { flex: 2; }
+
+        .panel-header {
+            background: var(--c-navy);
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+        }
+        .panel-content {
+            padding: 16px;
+        }
+
+        /* Tree styles */
+        .tree { font-size: 14px; line-height: 1.6; }
+        .tree ul { list-style: none; padding-left: 20px; }
+        .tree > ul { padding-left: 0; }
+        .tree li { position: relative; }
+        .tree li::before {
+            content: ''; position: absolute; left: -14px; top: 0;
+            border-left: 1px solid var(--border); height: 100%;
+        }
+        .tree li::after {
+            content: ''; position: absolute; left: -14px; top: 12px;
+            border-top: 1px solid var(--border); width: 10px;
+        }
+        .tree li:last-child::before { height: 12px; }
+        .tree > ul > li::before, .tree > ul > li::after { display: none; }
+
+        .node {
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+        .node:hover { background: rgba(0, 85, 135, 0.08); }
+        .node.selected { background: var(--c-peacock); color: white; }
+        .node-name { font-weight: 700; color: var(--c-navy); }
+        .node.selected .node-name { color: white; }
+        .node-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+            background: var(--color-bg);
+            color: var(--c-gray);
+            font-weight: 700;
+        }
+        .node-badge.container { background: rgba(0, 85, 135, 0.15); color: var(--c-peacock); }
+        .node-badge.model { background: rgba(0, 150, 57, 0.15); color: var(--c-green); }
+        .node.selected .node-badge { background: rgba(255,255,255,0.2); color: white; }
+
+        .toggle {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+            color: var(--c-gray);
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle:hover { color: var(--c-peacock); }
+        .collapsed > ul { display: none; }
+        .collapsed > .node .toggle { transform: rotate(-90deg); }
+
+        /* Detail panel */
+        .detail-section { margin-bottom: 20px; }
+        .detail-section h3 {
+            font-size: 11px;
+            color: var(--c-navy);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .detail-row {
+            font-size: 13px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .detail-row span:first-child { color: var(--c-gray); flex-shrink: 0; }
+        .detail-row span:last-child { color: var(--c-navy); font-weight: 700; text-align: right; word-break: break-word; }
+        .path-display {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            background: var(--c-navy);
+            color: white;
+            padding: 12px 14px;
+            border-radius: 4px;
+            word-break: break-all;
+            margin-bottom: 20px;
+        }
+        .formula-display {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            background: rgba(0, 85, 135, 0.08);
+            padding: 12px 14px;
+            border-radius: 4px;
+            color: var(--c-peacock);
+        }
+        .empty { color: var(--c-gray); font-style: italic; }
+
+        /* Links list */
+        .links-list { display: flex; flex-direction: column; gap: 6px; }
+        .link-item {
+            background: var(--color-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+        .link-pattern {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-weight: 700;
+            color: var(--c-navy);
+        }
+        .link-column {
+            color: var(--c-peacock);
+            margin-left: 8px;
+        }
+        .link-notes {
+            color: var(--c-gray);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* Tags */
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag {
+            background: var(--c-teal);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        a { color: var(--c-peacock); text-decoration: none; font-weight: 700; }
+        a:hover { text-decoration: underline; }
+
+        .loading { text-align: center; padding: 40px; color: var(--c-gray); }
+
+        /* Search */
+        .search-box {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: var(--font-sans);
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--c-peacock);
+            box-shadow: 0 0 0 3px rgba(0, 85, 135, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/" class="btn-home" title="Home">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </a>
+        <h1>Business Models Browser</h1>
+    </div>
+    <div class="main">
+        <div class="panel tree-panel">
+            <div class="panel-header">
+                <span>Model Hierarchy</span>
+            </div>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Filter models..." oninput="filterTree(this.value)">
+            </div>
+            <div class="panel-content">
+                <div id="tree" class="tree"><div class="loading">Loading...</div></div>
+            </div>
+        </div>
+        <div class="panel detail-panel">
+            <div class="panel-header">Model Details</div>
+            <div class="panel-content">
+                <div id="details"><p class="empty">Select a model to view details</p></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedNode = null;
+        let treeData = [];
+
+        async function loadTree() {
+            try {
+                const res = await fetch('/models/tree');
+                const data = await res.json();
+                treeData = data.tree || [];
+                document.getElementById('tree').innerHTML = '<ul>' + treeData.map(renderNode).join('') + '</ul>';
+            } catch (e) {
+                document.getElementById('tree').innerHTML = '<div class="loading">Failed to load models</div>';
+                console.error('Failed to load models:', e);
+            }
+        }
+
+        function renderNode(node) {
+            const hasChildren = node.children && node.children.length > 0;
+            const badge = node.is_container
+                ? '<span class="node-badge container">category</span>'
+                : '<span class="node-badge model">model</span>';
+
+            return `
+                <li data-path="${node.path}" data-node='${JSON.stringify(node).replace(/'/g, "&#39;")}'>
+                    <span class="node" onclick="selectNode(this)">
+                        ${hasChildren ? '<span class="toggle" onclick="toggleNode(event, this)">&#9660;</span>' : '<span class="toggle"></span>'}
+                        <span class="node-name">${node.display_name || node.name}</span>
+                        ${badge}
+                    </span>
+                    ${hasChildren ? '<ul>' + node.children.map(renderNode).join('') + '</ul>' : ''}
+                </li>
+            `;
+        }
+
+        function toggleNode(e, el) {
+            e.stopPropagation();
+            el.closest('li').classList.toggle('collapsed');
+        }
+
+        async function selectNode(el) {
+            if (selectedNode) selectedNode.classList.remove('selected');
+            el.classList.add('selected');
+            selectedNode = el;
+
+            const li = el.closest('li');
+            const path = li.dataset.path;
+
+            // Fetch full model details
+            try {
+                const res = await fetch('/models/' + encodeURIComponent(path));
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                showDetails(data.model, data.moniker_patterns);
+            } catch (e) {
+                console.error('Failed to fetch model details:', e);
+                const node = JSON.parse(li.dataset.node);
+                showDetails(node, []);
+            }
+        }
+
+        function showDetails(model, monikerPatterns) {
+            const ownership = model.ownership || {};
+            const appearsIn = model.appears_in || [];
+
+            let html = `
+                <div class="path-display">${model.path}</div>
+
+                <div class="detail-section">
+                    <h3>Basic Info</h3>
+                    ${detailRow('Display Name', model.display_name || '-')}
+                    ${detailRow('Description', model.description || '-')}
+                    ${model.unit ? detailRow('Unit', model.unit) : ''}
+                    ${model.data_type && model.data_type !== 'float' ? detailRow('Data Type', model.data_type) : ''}
+                </div>
+
+                ${model.formula ? `
+                    <div class="detail-section">
+                        <h3>Formula</h3>
+                        <div class="formula-display">${model.formula}</div>
+                    </div>
+                ` : ''}
+
+                ${appearsIn.length > 0 ? `
+                    <div class="detail-section">
+                        <h3>Appears In (${appearsIn.length} monikers)</h3>
+                        <div class="links-list">
+                            ${appearsIn.map(link => `
+                                <div class="link-item">
+                                    <span class="link-pattern">${link.moniker_pattern}</span>
+                                    ${link.column_name ? `<span class="link-column">column: ${link.column_name}</span>` : ''}
+                                    ${link.notes ? `<div class="link-notes">${link.notes}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${(ownership.methodology_owner || ownership.business_steward || ownership.support_channel) ? `
+                    <div class="detail-section">
+                        <h3>Ownership</h3>
+                        ${ownership.methodology_owner ? detailRow('Methodology Owner', ownership.methodology_owner) : ''}
+                        ${ownership.business_steward ? detailRow('Business Steward', ownership.business_steward) : ''}
+                        ${ownership.support_channel ? detailRow('Support Channel', ownership.support_channel) : ''}
+                    </div>
+                ` : ''}
+
+                ${model.semantic_tags && model.semantic_tags.length > 0 ? `
+                    <div class="detail-section">
+                        <h3>Semantic Tags</h3>
+                        <div class="tags">
+                            ${model.semantic_tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div class="detail-section">
+                    <h3>Documentation</h3>
+                    ${model.documentation_url ? `<div class="detail-row" style="border:none"><a href="${model.documentation_url}" target="_blank">Documentation</a></div>` : ''}
+                    ${model.methodology_url ? `<div class="detail-row" style="border:none"><a href="${model.methodology_url}" target="_blank">Methodology</a></div>` : ''}
+                    ${!model.documentation_url && !model.methodology_url ? '<p class="empty">No documentation links</p>' : ''}
+                </div>
+
+                <div class="detail-section">
+                    <h3>API</h3>
+                    <div class="detail-row" style="border:none">
+                        <a href="/models/${model.path}" target="_blank">/models/${model.path}</a>
+                    </div>
+                    <div class="detail-row" style="border:none">
+                        <a href="/models/${model.path}/monikers" target="_blank">/models/${model.path}/monikers</a>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('details').innerHTML = html;
+        }
+
+        function detailRow(label, value) {
+            return `<div class="detail-row"><span>${label}</span><span>${value}</span></div>`;
+        }
+
+        function filterTree(query) {
+            const q = query.toLowerCase().trim();
+            const allNodes = document.querySelectorAll('.tree li');
+
+            if (!q) {
+                allNodes.forEach(li => li.style.display = '');
+                return;
+            }
+
+            allNodes.forEach(li => {
+                const node = JSON.parse(li.dataset.node);
+                const text = [
+                    node.path,
+                    node.name,
+                    node.display_name || ''
+                ].join(' ').toLowerCase();
+
+                if (text.includes(q)) {
+                    li.style.display = '';
+                    // Show ancestors
+                    let parent = li.parentElement;
+                    while (parent) {
+                        if (parent.tagName === 'LI') {
+                            parent.style.display = '';
+                            parent.classList.remove('collapsed');
+                        }
+                        parent = parent.parentElement;
+                    }
+                } else {
+                    li.style.display = 'none';
+                }
+            });
+
+            // Second pass: show hidden nodes that have visible children
+            allNodes.forEach(li => {
+                if (li.style.display === 'none') {
+                    const visibleChild = li.querySelector('li[style=""]');
+                    if (visibleChild) {
+                        li.style.display = '';
+                    }
+                }
+            });
+        }
+
+        loadTree();
+    </script>
+</body>
+</html>
