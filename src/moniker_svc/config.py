@@ -67,6 +67,23 @@ class ConfigUIConfig:
 
 
 @dataclass
+class DeprecationConfig:
+    """Feature toggle for deprecation / decommissioning features.
+
+    When disabled (default), the service behaves exactly as before:
+    - No successor redirect on resolve
+    - No validated diff on catalog reload (plain atomic_replace)
+    - No deprecation fields in telemetry events
+    - API responses still include successor/sunset fields (just always null)
+    """
+    enabled: bool = False  # Off by default — opt-in to avoid surprises
+    redirect_on_resolve: bool = True    # Follow successor chain when resolving deprecated monikers
+    validated_reload: bool = True       # Diff + audit on catalog hot-reload
+    block_breaking_reload: bool = False # Block reload if breaking changes detected
+    deprecation_telemetry: bool = True  # Tag telemetry events with deprecation info
+
+
+@dataclass
 class Config:
     """Main configuration container."""
     server: ServerConfig = field(default_factory=ServerConfig)
@@ -76,6 +93,7 @@ class Config:
     auth: AuthConfig = field(default_factory=AuthConfig)
     sql_catalog: SqlCatalogConfig = field(default_factory=SqlCatalogConfig)
     config_ui: ConfigUIConfig = field(default_factory=ConfigUIConfig)
+    deprecation: DeprecationConfig = field(default_factory=DeprecationConfig)
 
     @classmethod
     def from_dict(cls, data: dict) -> Config:
@@ -89,6 +107,7 @@ class Config:
             auth=AuthConfig.from_dict(auth_data) if auth_data else AuthConfig(),
             sql_catalog=SqlCatalogConfig(**data.get("sql_catalog", {})),
             config_ui=ConfigUIConfig(**data.get("config_ui", {})),
+            deprecation=DeprecationConfig(**data.get("deprecation", {})),
         )
 
     @classmethod

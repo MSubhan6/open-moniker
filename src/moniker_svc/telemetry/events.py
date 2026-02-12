@@ -106,6 +106,11 @@ class UsageEvent:
     # Additional context
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    # Deprecation telemetry
+    deprecated: bool = False
+    successor: str | None = None
+    redirected_from: str | None = None
+
     @classmethod
     def create(
         cls,
@@ -159,4 +164,7 @@ class UsageEvent:
             "result_count": self.result_count,
             "cached": self.cached,
             "metadata": self.metadata,
+            "deprecated": self.deprecated,
+            "successor": self.successor,
+            "redirected_from": self.redirected_from,
         }

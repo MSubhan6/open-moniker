@@ -27,10 +27,12 @@ class DialectRegistry:
         from .snowflake import SnowflakeDialect
         from .oracle import OracleDialect
         from .rest import RestDialect
+        from .mssql import MSSQLDialect
 
         self.register(SnowflakeDialect())
         self.register(OracleDialect())
         self.register(RestDialect())
+        self.register(MSSQLDialect())
 
     def register(self, dialect: "VersionDialect") -> None:
         """Register a dialect by its name."""

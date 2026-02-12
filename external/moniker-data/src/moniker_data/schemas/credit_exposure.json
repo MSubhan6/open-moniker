@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Credit Exposures",
+  "description": "Schema for counterparty credit exposure data from SQL Server Credit Risk Engine",
+  "type": "object",
+  "required": ["ASOF_DATE", "COUNTERPARTY_ID", "EXPOSURE_TYPE", "NOTIONAL", "CURRENCY"],
+  "properties": {
+    "ASOF_DATE": {
+      "type": "string",
+      "format": "date",
+      "description": "Business date of the exposure snapshot"
+    },
+    "COUNTERPARTY_ID": {
+      "type": "string",
+      "description": "Unique counterparty identifier",
+      "pattern": "^CP\\d{3}$"
+    },
+    "COUNTERPARTY_NAME": {
+      "type": "string",
+      "description": "Legal entity name of the counterparty"
+    },
+    "SECTOR": {
+      "type": "string",
+      "description": "Industry sector classification",
+      "enum": ["Financials", "Automotive", "Energy", "Mining", "Technology", "Consumer Staples"]
+    },
+    "RATING": {
+      "type": "string",
+      "description": "Credit rating (S&P scale)",
+      "pattern": "^(AAA|AA\\+|AA|AA-|A\\+|A|A-|BBB\\+|BBB|BBB-|BB\\+|BB|BB-|B\\+|B|B-)$"
+    },
+    "COUNTRY": {
+      "type": "string",
+      "description": "Country of incorporation (ISO 3166-1 alpha-2)",
+      "pattern": "^[A-Z]{2}$"
+    },
+    "EXPOSURE_TYPE": {
+      "type": "string",
+      "description": "Type of credit exposure",
+      "enum": ["Loan", "Derivative", "Guarantee", "TradeFinance"]
+    },
+    "NOTIONAL": {
+      "type": "number",
+      "description": "Notional amount of the exposure",
+      "minimum": 0
+    },
+    "MARK_TO_MARKET": {
+      "type": "number",
+      "description": "Current mark-to-market value (can be negative)"
+    },
+    "PFE": {
+      "type": "number",
+      "description": "Potential Future Exposure at 97.5% confidence",
+      "minimum": 0
+    },
+    "CVA": {
+      "type": "number",
+      "description": "Credit Valuation Adjustment"
+    },
+    "LGD": {
+      "type": "number",
+      "description": "Loss Given Default (decimal, 0-1)",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "PD": {
+      "type": "number",
+      "description": "Probability of Default (decimal, annualized)",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "EXPECTED_LOSS": {
+      "type": "number",
+      "description": "Expected loss = Notional × LGD × PD",
+      "minimum": 0
+    },
+    "CURRENCY": {
+      "type": "string",
+      "description": "Exposure currency (ISO 4217)",
+      "pattern": "^[A-Z]{3}$"
+    }
+  }
+}

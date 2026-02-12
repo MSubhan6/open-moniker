@@ -19,7 +19,7 @@ from typing import Any
 
 from .cache.memory import InMemoryCache
 from .catalog.registry import CatalogRegistry
-from .catalog.types import CatalogNode, ResolvedOwnership, SourceBinding
+from .catalog.types import CatalogNode, NodeStatus, ResolvedOwnership, SourceBinding
 from .config import Config
 from .dialect import get_dialect
 from .domains.registry import DomainRegistry
@@ -30,6 +30,9 @@ from .telemetry.events import UsageEvent, CallerIdentity, EventOutcome, Operatio
 
 
 logger = logging.getLogger(__name__)
+
+# Maximum depth for successor redirect chains
+MAX_SUCCESSOR_DEPTH = 5
 
 
 class ResolutionError(Exception):
@@ -95,6 +98,9 @@ class ResolveResult:
 
     # Sub-path relative to binding (for hierarchical sources)
     sub_path: str | None = None
+
+    # Successor redirect metadata
+    redirected_from: str | None = None
 
 
 @dataclass
@@ -181,6 +187,36 @@ class MonikerService:
 
                 binding, binding_path = binding_info
 
+                # Successor redirect: if node is DEPRECATED with a successor,
+                # follow the successor chain to resolve the binding
+                # (only when deprecation feature is enabled)
+                redirected_from = None
+                deprecation_enabled = self.config.deprecation.enabled and self.config.deprecation.redirect_on_resolve
+                original_node = self.catalog.get(path_str)
+                if (deprecation_enabled
+                    and original_node
+                    and original_node.status == NodeStatus.DEPRECATED
+                    and original_node.successor):
+                    # Follow successor chain
+                    current_successor = original_node.successor
+                    redirected_from = path_str
+                    for _depth in range(MAX_SUCCESSOR_DEPTH):
+                        successor_binding = self.catalog.find_source_binding(current_successor)
+                        if successor_binding is None:
+                            logger.warning(f"Successor '{current_successor}' for '{path_str}' has no binding")
+                            break
+                        binding, binding_path = successor_binding
+                        # Check if the successor itself is deprecated with a further successor
+                        successor_node = self.catalog.get(current_successor)
+                        if (successor_node
+                            and successor_node.status == NodeStatus.DEPRECATED
+                            and successor_node.successor):
+                            current_successor = successor_node.successor
+                        else:
+                            break
+                    else:
+                        logger.warning(f"Successor chain for '{path_str}' exceeded max depth {MAX_SUCCESSOR_DEPTH}")
+
                 # Calculate sub-path (path relative to binding)
                 sub_path = None
                 if binding_path != path_str and path_str.startswith(binding_path):
@@ -216,6 +252,7 @@ class MonikerService:
                     node=node,
                     binding_path=binding_path,
                     sub_path=sub_path,
+                    redirected_from=redirected_from,
                 )
 
                 # Cache the resolution
@@ -575,6 +612,19 @@ class MonikerService:
                 "instruments": fmt(instruments) if isinstance(instruments, str) else instruments,
             }
 
+        elif source_type == "mssql":
+            connection = {
+                "server": config.get("server"),
+                "port": config.get("port", 1433),
+                "database": config.get("database"),
+                "driver": config.get("driver", "ODBC Driver 18 for SQL Server"),
+            }
+            if config.get("query"):
+                query = fmt(config["query"])
+            elif config.get("table"):
+                table = fmt(config["table"])
+                query = f"SELECT * FROM {table}"
+
         elif source_type == "opensearch":
             connection = {
                 "hosts": config.get("hosts", []),
@@ -851,6 +901,16 @@ class MonikerService:
         except Exception:
             path_str = moniker_str
 
+        # Extract deprecation info from result (only when feature enabled)
+        deprecated = False
+        successor = None
+        redirected_from = None
+        if self.config.deprecation.enabled and self.config.deprecation.deprecation_telemetry:
+            if result and result.node:
+                deprecated = result.node.status == NodeStatus.DEPRECATED
+                successor = getattr(result.node, 'successor', None)
+                redirected_from = result.redirected_from
+
         event = UsageEvent.create(
             moniker=moniker_str,
             moniker_path=path_str,
@@ -862,32 +922,77 @@ class MonikerService:
             resolved_source_type=result.source.source_type if result else None,
             owner_at_access=result.ownership.accountable_owner if result else None,
             metadata={"event_type": "resolution"},
+            deprecated=deprecated,
+            successor=successor,
+            redirected_from=redirected_from,
         )
 
         self.telemetry.emit(event)
 
-    def reload_catalog(self, new_catalog: CatalogRegistry) -> int:
+    def reload_catalog(
+        self,
+        new_catalog: CatalogRegistry,
+        block_breaking: bool | None = None,
+        audit_actor: str = "system",
+    ) -> dict:
         """
-        Hot-reload the catalog with a new set of nodes.
+        Hot-reload the catalog.
 
-        This atomically replaces the catalog contents, allowing for
-        live updates without service restart.
+        When deprecation features are enabled, uses validated diffing with
+        audit trail and optional breaking-change blocking. Otherwise falls
+        back to plain atomic_replace (original behaviour).
 
         Args:
             new_catalog: The new catalog registry to use
+            block_breaking: Override for blocking breaking changes (uses config default if None)
+            audit_actor: Actor name for audit entries
 
         Returns:
-            Number of nodes in the new catalog
+            Dict with reload summary
         """
-        # Get all nodes from the new catalog
         new_nodes = new_catalog.all_nodes()
 
-        # Atomically replace the catalog contents
-        self.catalog.atomic_replace(new_nodes)
+        use_validated = self.config.deprecation.enabled and self.config.deprecation.validated_reload
+        if block_breaking is None:
+            block_breaking = self.config.deprecation.block_breaking_reload
 
-        # Clear the cache since catalog changed
-        self.cache.clear()
+        if use_validated:
+            # Validated replace: diff, audit, and swap
+            catalog_diff, applied = self.catalog.validated_replace(
+                new_nodes,
+                block_breaking=block_breaking,
+                audit_actor=audit_actor,
+            )
 
-        logger.info(f"Catalog hot-reloaded with {len(new_nodes)} nodes")
+            if applied:
+                self.cache.clear()
 
-        return len(new_nodes)
+                successor_errors = self.catalog.validate_successors()
+                if successor_errors:
+                    logger.warning(f"Successor validation errors: {successor_errors}")
+
+                logger.info(f"Catalog hot-reloaded with {len(new_nodes)} nodes")
+            else:
+                successor_errors = []
+                logger.warning("Catalog reload was blocked due to breaking changes")
+
+            return {
+                "moniker_count": len(new_nodes),
+                "applied": applied,
+                "diff": catalog_diff.summary(),
+                "added": len(catalog_diff.added_paths),
+                "removed": len(catalog_diff.removed_paths),
+                "binding_changed": len(catalog_diff.binding_changed_paths),
+                "status_changed": len(catalog_diff.status_changed_paths),
+                "has_breaking_changes": catalog_diff.has_breaking_changes,
+                "successor_errors": successor_errors,
+            }
+        else:
+            # Original behaviour: plain atomic replace
+            self.catalog.atomic_replace(new_nodes)
+            self.cache.clear()
+            logger.info(f"Catalog hot-reloaded with {len(new_nodes)} nodes")
+            return {
+                "moniker_count": len(new_nodes),
+                "applied": True,
+            }

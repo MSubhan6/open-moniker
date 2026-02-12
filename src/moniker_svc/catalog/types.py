@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -16,10 +18,21 @@ class SourceType(str, Enum):
     EXCEL = "excel"
     BLOOMBERG = "bloomberg"
     REFINITIV = "refinitiv"
+    MSSQL = "mssql"
     OPENSEARCH = "opensearch"  # OpenSearch/Elasticsearch
     # Synthetic/computed sources
     COMPOSITE = "composite"  # Combines multiple sources
     DERIVED = "derived"      # Computed from other monikers
+
+
+class NodeStatus(str, Enum):
+    """Lifecycle status for catalog nodes."""
+    DRAFT = "draft"                    # Being defined, not visible to clients
+    PENDING_REVIEW = "pending_review"  # Submitted for governance review
+    APPROVED = "approved"              # Governance approved, ready to activate
+    ACTIVE = "active"                  # Live and resolvable
+    DEPRECATED = "deprecated"          # Still works but clients warned
+    ARCHIVED = "archived"             # No longer resolvable
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +116,19 @@ class SourceBinding:
 
     # Is this source read-only?
     read_only: bool = True
+
+    @property
+    def fingerprint(self) -> str:
+        """SHA-256 fingerprint of the binding contract (source_type, config, etc.)."""
+        data = {
+            "source_type": self.source_type.value if hasattr(self.source_type, 'value') else str(self.source_type),
+            "config": self.config,
+            "allowed_operations": sorted(self.allowed_operations) if self.allowed_operations else None,
+            "schema": self.schema,
+            "read_only": self.read_only,
+        }
+        raw = json.dumps(data, sort_keys=True, default=str)
+        return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,6 +299,19 @@ class CatalogNode:
     # Additional metadata
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    # Governance lifecycle
+    status: NodeStatus = NodeStatus.ACTIVE
+    created_at: str | None = None      # ISO timestamp
+    updated_at: str | None = None      # ISO timestamp
+    created_by: str | None = None      # Who created this entry
+    approved_by: str | None = None     # Who approved it
+    deprecation_message: str | None = None  # Shown when status=deprecated
+
+    # Successor-based migration (for decommissioning)
+    successor: str | None = None              # Path to replacement moniker
+    sunset_deadline: str | None = None        # ISO date after which moniker will be archived
+    migration_guide_url: str | None = None    # URL to migration documentation
+
     # Is this a leaf node (actual data) or category (contains children)?
     is_leaf: bool = False
 
@@ -441,6 +480,18 @@ class DataSchema:
 
     # Update frequency description
     update_frequency: str | None = None  # e.g., "daily", "real-time", "monthly"
+
+
+@dataclass(frozen=True, slots=True)
+class AuditEntry:
+    """Record of a change to a catalog node."""
+    timestamp: str           # ISO format
+    path: str               # Node path
+    action: str             # created, updated, status_changed, ownership_changed
+    actor: str              # Who made the change
+    old_value: str | None = None
+    new_value: str | None = None
+    details: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

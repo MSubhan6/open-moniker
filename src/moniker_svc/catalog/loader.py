@@ -11,7 +11,7 @@ import yaml
 from .registry import CatalogRegistry
 from .types import (
     AccessPolicy, CatalogNode, ColumnSchema, DataQuality, DataSchema,
-    Documentation, Freshness, Ownership, SLA, SourceBinding, SourceType,
+    Documentation, Freshness, NodeStatus, Ownership, SLA, SourceBinding, SourceType,
 )
 
 
@@ -68,7 +68,7 @@ class CatalogLoader:
             registry.register(node)
             logger.debug(f"Loaded catalog node: {path}")
 
-        logger.info(f"Loaded {len(registry.all_paths())} catalog nodes")
+        logger.info(f"Loaded {len(registry.all_paths())} monikers")
         return registry
 
     def _parse_node(self, path: str, data: dict[str, Any]) -> CatalogNode:
@@ -209,6 +209,14 @@ class CatalogLoader:
                 additional_links=additional_links,
             )
 
+        # Parse lifecycle status from YAML
+        status = NodeStatus.ACTIVE
+        if "status" in data:
+            try:
+                status = NodeStatus(data["status"])
+            except ValueError:
+                logger.warning(f"Unknown status '{data['status']}' for {path}, defaulting to active")
+
         return CatalogNode(
             path=path,
             display_name=data.get("display_name", ""),
@@ -225,6 +233,11 @@ class CatalogLoader:
             classification=data.get("classification", "internal"),
             tags=tags,
             metadata=data.get("metadata", {}),
+            status=status,
+            deprecation_message=data.get("deprecation_message"),
+            successor=data.get("successor"),
+            sunset_deadline=data.get("sunset_deadline"),
+            migration_guide_url=data.get("migration_guide_url"),
             is_leaf=source_binding is not None,
         )
 

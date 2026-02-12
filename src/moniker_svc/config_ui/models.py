@@ -251,14 +251,14 @@ class SaveResponse(BaseModel):
     """Save to YAML response."""
     success: bool
     path: str
-    node_count: int
+    moniker_count: int
     message: str = ""
 
 
 class ReloadResponse(BaseModel):
     """Reload from YAML response."""
     success: bool
-    node_count: int
+    moniker_count: int
     message: str = ""
 
 

@@ -28,7 +28,10 @@ from .auth import create_composite_authenticator, get_caller_identity, set_authe
 from .cache.memory import InMemoryCache
 from .catalog.registry import CatalogRegistry
 from .catalog.loader import load_catalog
-from .catalog.types import CatalogNode, Ownership, SourceBinding, SourceType
+from .catalog.types import (
+    CatalogNode, Ownership, SourceBinding, SourceType,
+    DataSchema, ColumnSchema, DataQuality, Freshness, SLA, AccessPolicy, Documentation,
+)
 from .config import Config
 from .identity.extractor import extract_identity
 from .moniker.parser import MonikerParseError
@@ -65,6 +68,14 @@ class ResolveResponse(BaseModel):
     ownership: dict[str, Any]
     binding_path: str
     sub_path: str | None = None
+    # Enterprise additions
+    status: str | None = None            # Node lifecycle status
+    deprecation_message: str | None = None  # Warning if deprecated
+    successor: str | None = None         # Path to replacement moniker
+    sunset_deadline: str | None = None   # ISO date after which archived
+    migration_guide_url: str | None = None  # URL to migration docs
+    redirected_from: str | None = None   # Original path if redirected via successor
+    cache_ttl_hint: int = 300            # Suggested client cache TTL in seconds
 
 
 class ListResponse(BaseModel):
@@ -117,6 +128,63 @@ class HealthResponse(BaseModel):
     status: str
     telemetry: dict[str, Any]
     cache: dict[str, Any]
+    rate_limiter: dict[str, Any] | None = None
+    circuit_breaker: dict[str, Any] | None = None
+    catalog_counts: dict[str, int] | None = None
+
+
+# Enterprise pagination and batch models
+class PaginatedCatalogResponse(BaseModel):
+    """Paginated catalog listing with cursor-based pagination."""
+    paths: list[str]
+    total_count: int | None = None
+    next_cursor: str | None = None
+    has_more: bool = False
+
+
+class CatalogSearchResponse(BaseModel):
+    """Search results from catalog."""
+    results: list[dict[str, Any]]
+    query: str
+    total_results: int
+
+
+class BatchResolveRequest(BaseModel):
+    """Request to resolve multiple monikers in one call."""
+    monikers: list[str]
+
+
+class BatchResolveResponse(BaseModel):
+    """Batch resolution results."""
+    results: list[ResolveResponse]
+    errors: dict[str, str] = {}  # moniker -> error message
+
+
+class GovernanceStatusRequest(BaseModel):
+    """Request to update a node's governance status."""
+    status: str  # draft, pending_review, approved, active, deprecated, archived
+    actor: str
+    reason: str | None = None
+    deprecation_message: str | None = None
+    successor: str | None = None
+    sunset_deadline: str | None = None
+    migration_guide_url: str | None = None
+
+
+class AuditLogResponse(BaseModel):
+    """Audit log entries for governance tracking."""
+    entries: list[dict[str, Any]]
+    path: str | None = None
+    total_entries: int
+
+
+class CatalogStatsResponse(BaseModel):
+    """Catalog statistics and health overview."""
+    total_monikers: int
+    by_status: dict[str, int]
+    by_source_type: dict[str, int]
+    by_classification: dict[str, int]
+    ownership_coverage: dict[str, Any]
 
 
 class ErrorResponse(BaseModel):
@@ -191,6 +259,10 @@ TreeNodeResponse.model_rebuild()
 _service: MonikerService | None = None
 _telemetry_task: asyncio.Task | None = None
 _batcher_task: asyncio.Task | None = None
+
+# Enterprise governance singletons
+_rate_limiter = None
+_circuit_breaker = None
 
 
 def create_demo_catalog() -> CatalogRegistry:
@@ -525,6 +597,180 @@ def create_demo_catalog() -> CatalogRegistry:
         is_leaf=True,
     ))
 
+    # ==========================================================================
+    # CREDIT - Credit Risk (MS-SQL)
+    # ==========================================================================
+    registry.register(CatalogNode(
+        path="credit",
+        display_name="Credit Risk",
+        description="Counterparty credit exposures, limits, and risk metrics from the Credit Risk Engine (SQL Server)",
+        ownership=Ownership(
+            accountable_owner="credit-risk-governance@firm.com",
+            data_specialist="credit-analytics@firm.com",
+            support_channel="#credit-risk-data",
+        ),
+    ))
+
+    registry.register(CatalogNode(
+        path="credit.exposures",
+        display_name="Credit Exposures",
+        description="Daily counterparty credit exposure snapshots including notional, MTM, PFE, CVA, and expected loss by exposure type",
+        source_binding=SourceBinding(
+            source_type=SourceType.MSSQL,
+            config={
+                "server": "credit-risk-sql.firm.com",
+                "port": 1433,
+                "database": "CreditRisk",
+                "driver": "ODBC Driver 17 for SQL Server",
+                "query": """SELECT ASOF_DATE, COUNTERPARTY_ID, COUNTERPARTY_NAME,
+                    SECTOR, RATING, COUNTRY, EXPOSURE_TYPE, NOTIONAL,
+                    MARK_TO_MARKET, PFE, CVA, LGD, PD, EXPECTED_LOSS, CURRENCY
+                    FROM [dbo].[credit_exposures]
+                    WHERE ASOF_DATE >= DATEADD(DAY, -30, GETDATE())""",
+            },
+        ),
+        is_leaf=True,
+        data_schema=DataSchema(
+            columns=(
+                ColumnSchema(name="ASOF_DATE", data_type="date", description="Business date of the exposure snapshot", semantic_type="timestamp", example="2026-01-15"),
+                ColumnSchema(name="COUNTERPARTY_ID", data_type="string", description="Unique counterparty identifier", semantic_type="identifier", example="CP001"),
+                ColumnSchema(name="COUNTERPARTY_NAME", data_type="string", description="Legal entity name", semantic_type="dimension", example="Goldman Sachs Group"),
+                ColumnSchema(name="SECTOR", data_type="string", description="Industry sector classification", semantic_type="dimension", example="Financials"),
+                ColumnSchema(name="RATING", data_type="string", description="Credit rating (S&P scale)", semantic_type="dimension", example="AA-"),
+                ColumnSchema(name="COUNTRY", data_type="string", description="Country of incorporation (ISO 3166-1 alpha-2)", semantic_type="dimension", example="US"),
+                ColumnSchema(name="EXPOSURE_TYPE", data_type="string", description="Type of credit exposure", semantic_type="dimension", example="Derivative"),
+                ColumnSchema(name="NOTIONAL", data_type="float", description="Notional amount of the exposure", semantic_type="measure", example="150000000.00"),
+                ColumnSchema(name="MARK_TO_MARKET", data_type="float", description="Current mark-to-market value", semantic_type="measure", example="2350000.50"),
+                ColumnSchema(name="PFE", data_type="float", description="Potential Future Exposure at 97.5% confidence", semantic_type="measure", example="12500000.00"),
+                ColumnSchema(name="CVA", data_type="float", description="Credit Valuation Adjustment", semantic_type="measure", example="45000.00"),
+                ColumnSchema(name="LGD", data_type="float", description="Loss Given Default (0-1)", semantic_type="measure", example="0.45"),
+                ColumnSchema(name="PD", data_type="float", description="Probability of Default (annualized)", semantic_type="measure", example="0.002"),
+                ColumnSchema(name="EXPECTED_LOSS", data_type="float", description="Expected loss = Notional x LGD x PD", semantic_type="measure", example="135000.00"),
+                ColumnSchema(name="CURRENCY", data_type="string", description="Exposure currency (ISO 4217)", semantic_type="dimension", example="USD"),
+            ),
+            description="Daily counterparty credit exposure snapshots with full risk metrics",
+            semantic_tags=("credit", "risk", "counterparty", "exposure", "timeseries"),
+            primary_key=("ASOF_DATE", "COUNTERPARTY_ID", "EXPOSURE_TYPE"),
+            use_cases=(
+                "counterparty risk monitoring",
+                "limit utilization analysis",
+                "CVA desk hedging",
+                "regulatory reporting (SA-CCR)",
+                "concentration risk assessment",
+            ),
+            related_monikers=("credit.limits",),
+            granularity="daily per-counterparty per-exposure-type",
+        ),
+        data_quality=DataQuality(
+            dq_owner="credit-dq@firm.com",
+            quality_score=92,
+            known_issues=(
+                "Weekend gaps in timeseries — no weekend data points",
+                "Petrobras (CP006) rating may lag by 1 business day",
+            ),
+            validation_rules=(
+                "NOTIONAL > 0",
+                "LGD BETWEEN 0 AND 1",
+                "PD BETWEEN 0 AND 1",
+                "EXPECTED_LOSS ≈ NOTIONAL × LGD × PD (±5%)",
+            ),
+            last_validated="2026-01-28T06:30:00Z",
+        ),
+        freshness=Freshness(
+            last_loaded="2026-01-28T07:15:00Z",
+            refresh_schedule="07:00 ET daily",
+            source_system="Credit Risk Engine (SQL Server)",
+        ),
+        sla=SLA(
+            freshness="T+1",
+            availability="99.5%",
+            support_hours="business hours ET",
+            escalation_contact="credit-risk-oncall@firm.com",
+        ),
+        access_policy=AccessPolicy(
+            base_row_count=960,
+            cardinality_multipliers=(8, 4, 30),
+            max_rows_warn=5000,
+            max_rows_block=50000,
+        ),
+        documentation=Documentation(
+            glossary_url="https://wiki.firm.com/credit-risk/glossary",
+            runbook_url="https://wiki.firm.com/credit-risk/runbook",
+            data_dictionary_url="https://wiki.firm.com/credit-risk/exposure-schema",
+        ),
+        tags=frozenset({"credit", "risk", "mssql", "counterparty", "timeseries"}),
+    ))
+
+    registry.register(CatalogNode(
+        path="credit.limits",
+        display_name="Credit Limits",
+        description="Counterparty credit limits with utilization, approval, and expiry information",
+        source_binding=SourceBinding(
+            source_type=SourceType.MSSQL,
+            config={
+                "server": "credit-risk-sql.firm.com",
+                "port": 1433,
+                "database": "CreditRisk",
+                "driver": "ODBC Driver 17 for SQL Server",
+                "query": """SELECT COUNTERPARTY_ID, LIMIT_TYPE, LIMIT_AMOUNT,
+                    UTILIZED, AVAILABLE, APPROVED_BY, EXPIRY_DATE
+                    FROM [dbo].[credit_limits]""",
+            },
+        ),
+        is_leaf=True,
+        data_schema=DataSchema(
+            columns=(
+                ColumnSchema(name="COUNTERPARTY_ID", data_type="string", description="Unique counterparty identifier", semantic_type="identifier", example="CP001"),
+                ColumnSchema(name="LIMIT_TYPE", data_type="string", description="Type of credit limit", semantic_type="dimension", example="SingleName"),
+                ColumnSchema(name="LIMIT_AMOUNT", data_type="float", description="Approved credit limit", semantic_type="measure", example="500000000.00"),
+                ColumnSchema(name="UTILIZED", data_type="float", description="Amount currently utilized", semantic_type="measure", example="350000000.00"),
+                ColumnSchema(name="AVAILABLE", data_type="float", description="Remaining available limit", semantic_type="measure", example="150000000.00"),
+                ColumnSchema(name="APPROVED_BY", data_type="string", description="Approver name and title", semantic_type="dimension", example="J. Smith (CRO)"),
+                ColumnSchema(name="EXPIRY_DATE", data_type="date", description="Limit expiry date", semantic_type="timestamp", example="2027-06-15"),
+            ),
+            description="Counterparty credit limits by type with utilization tracking",
+            semantic_tags=("credit", "limits", "counterparty", "governance"),
+            primary_key=("COUNTERPARTY_ID", "LIMIT_TYPE"),
+            use_cases=(
+                "limit utilization monitoring",
+                "limit breach alerts",
+                "counterparty onboarding",
+                "credit committee reporting",
+            ),
+            related_monikers=("credit.exposures",),
+            granularity="per-counterparty per-limit-type",
+        ),
+        data_quality=DataQuality(
+            dq_owner="credit-dq@firm.com",
+            quality_score=98,
+            known_issues=(),
+            validation_rules=(
+                "LIMIT_AMOUNT > 0",
+                "UTILIZED >= 0",
+                "AVAILABLE = LIMIT_AMOUNT - UTILIZED",
+                "EXPIRY_DATE > current_date",
+            ),
+            last_validated="2026-01-28T06:30:00Z",
+        ),
+        freshness=Freshness(
+            last_loaded="2026-01-28T07:15:00Z",
+            refresh_schedule="07:00 ET daily",
+            source_system="Credit Risk Engine (SQL Server)",
+        ),
+        sla=SLA(
+            freshness="T+0 (intraday updates)",
+            availability="99.9%",
+            support_hours="24/7",
+            escalation_contact="credit-risk-oncall@firm.com",
+        ),
+        documentation=Documentation(
+            glossary_url="https://wiki.firm.com/credit-risk/glossary",
+            runbook_url="https://wiki.firm.com/credit-risk/runbook",
+            data_dictionary_url="https://wiki.firm.com/credit-risk/limits-schema",
+        ),
+        tags=frozenset({"credit", "risk", "mssql", "limits", "governance"}),
+    ))
+
     return registry
 
 
@@ -614,6 +860,17 @@ async def lifespan(app: FastAPI):
         telemetry=emitter,
         config=config,
     )
+
+    # Initialize enterprise governance features
+    global _rate_limiter, _circuit_breaker
+    try:
+        from .governance.rate_limiter import RateLimiter, RateLimiterConfig
+        from .governance.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
+        _rate_limiter = RateLimiter(config=RateLimiterConfig())
+        _circuit_breaker = CircuitBreaker(config=CircuitBreakerConfig())
+        logger.info("Enterprise governance features initialized (rate limiter, circuit breaker)")
+    except ImportError:
+        logger.info("Governance module not available, running without rate limiting")
 
     # Initialize authentication if enabled
     if config.auth.enabled:
@@ -804,11 +1061,14 @@ async def resolution_error_handler(request: Request, exc: ResolutionError):
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health():
-    """Health check endpoint with telemetry and cache statistics."""
+    """Health check endpoint with telemetry, cache, rate limiter, and circuit breaker statistics."""
     return HealthResponse(
         status="healthy",
         telemetry=_service.telemetry.stats if _service else {},
         cache=_service.cache.stats if _service else {},
+        rate_limiter=_rate_limiter.stats if _rate_limiter else None,
+        circuit_breaker=_circuit_breaker.stats if _circuit_breaker else None,
+        catalog_counts=_service.catalog.count() if _service else None,
     )
 
 
@@ -832,6 +1092,18 @@ async def resolve_moniker(
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
+    # Rate limiting
+    if _rate_limiter:
+        try:
+            caller_id = caller.app_id or caller.user_id or "anonymous"
+            _rate_limiter.check(caller_id)
+        except Exception as e:
+            raise HTTPException(
+                status_code=429,
+                detail=str(e),
+                headers={"Retry-After": str(getattr(e, 'retry_after_seconds', 1))},
+            )
+
     # Get full path from request URL (preserves unencoded slashes)
     full_path = request.url.path
     if full_path.startswith("/resolve/"):
@@ -846,7 +1118,22 @@ async def resolve_moniker(
 
     result = await _service.resolve(moniker_str, caller)
 
-    return ResolveResponse(
+    # Check for deprecation warning
+    node = result.node
+    status_val = None
+    deprecation_msg = None
+    successor = None
+    sunset_deadline = None
+    migration_guide_url = None
+    if node:
+        if hasattr(node, 'status') and hasattr(node.status, 'value'):
+            status_val = node.status.value
+        deprecation_msg = getattr(node, 'deprecation_message', None)
+        successor = getattr(node, 'successor', None)
+        sunset_deadline = getattr(node, 'sunset_deadline', None)
+        migration_guide_url = getattr(node, 'migration_guide_url', None)
+
+    response = ResolveResponse(
         moniker=result.moniker,
         path=result.path,
         source_type=result.source.source_type,
@@ -872,7 +1159,30 @@ async def resolve_moniker(
         },
         binding_path=result.binding_path,
         sub_path=result.sub_path,
+        status=status_val,
+        deprecation_message=deprecation_msg,
+        successor=successor,
+        sunset_deadline=sunset_deadline,
+        migration_guide_url=migration_guide_url,
+        redirected_from=result.redirected_from,
     )
+
+    # Add deprecation/redirect headers
+    headers = {}
+    if status_val == "deprecated":
+        headers["X-Moniker-Deprecated"] = deprecation_msg or "This moniker is deprecated"
+    if successor:
+        headers["X-Moniker-Successor"] = successor
+    if result.redirected_from:
+        headers["X-Moniker-Redirected-From"] = result.redirected_from
+
+    if headers:
+        return JSONResponse(
+            content=response.model_dump(),
+            headers=headers,
+        )
+
+    return response
 
 
 @app.get("/list/{path:path}", response_model=ListResponse, tags=["Catalog"])
@@ -1074,13 +1384,300 @@ async def report_access(
 
 
 @app.get("/catalog", tags=["Catalog"])
-async def list_catalog():
-    """List all registered catalog paths in the moniker hierarchy."""
+async def list_catalog(
+    cursor: str | None = Query(default=None, description="Cursor for pagination (last path from previous page)"),
+    limit: int = Query(default=100, le=1000, description="Maximum paths to return"),
+    status: str | None = Query(default=None, description="Filter by status: active, deprecated, draft, etc."),
+):
+    """
+    List catalog paths with cursor-based pagination.
+
+    For catalogs with thousands of monikers, use cursor-based pagination:
+    1. First call: GET /catalog?limit=100
+    2. Next page: GET /catalog?limit=100&cursor=<next_cursor from response>
+    """
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
-    paths = _service.catalog.all_paths()
-    return {"paths": sorted(paths)}
+    # Apply rate limiting
+    if _rate_limiter:
+        try:
+            _rate_limiter.check("catalog_list")
+        except Exception as e:
+            raise HTTPException(
+                status_code=429,
+                detail=str(e),
+                headers={"Retry-After": str(getattr(e, 'retry_after_seconds', 1))},
+            )
+
+    from .catalog.types import NodeStatus
+    status_filter = None
+    if status:
+        try:
+            status_filter = NodeStatus(status)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+
+    paths, next_cursor = _service.catalog.paginated_paths(
+        cursor=cursor, limit=limit, status=status_filter,
+    )
+
+    return PaginatedCatalogResponse(
+        paths=paths,
+        total_count=len(_service.catalog.all_paths()),
+        next_cursor=next_cursor,
+        has_more=next_cursor is not None,
+    )
+
+
+@app.get("/catalog/search", response_model=CatalogSearchResponse, tags=["Catalog"])
+async def search_catalog(
+    q: str = Query(description="Search query (matches path, name, description, tags)"),
+    status: str | None = Query(default=None, description="Filter by lifecycle status"),
+    limit: int = Query(default=50, le=200, description="Maximum results"),
+):
+    """
+    Search the catalog by path, display name, description, or tags.
+
+    Useful for discovering monikers in a large catalog.
+    """
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    from .catalog.types import NodeStatus
+    status_filter = None
+    if status:
+        try:
+            status_filter = NodeStatus(status)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+
+    results = _service.catalog.search(q, status=status_filter, limit=limit)
+
+    return CatalogSearchResponse(
+        results=[
+            {
+                "path": n.path,
+                "display_name": n.display_name,
+                "description": n.description,
+                "status": n.status.value if hasattr(n.status, 'value') else str(n.status),
+                "has_source_binding": n.source_binding is not None,
+                "classification": n.classification,
+                "tags": list(n.tags),
+            }
+            for n in results
+        ],
+        query=q,
+        total_results=len(results),
+    )
+
+
+@app.get("/catalog/stats", response_model=CatalogStatsResponse, tags=["Catalog"])
+async def catalog_stats():
+    """Get catalog statistics - moniker counts by status, source type, and classification."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    nodes = _service.catalog.all_nodes()
+
+    by_status: dict[str, int] = {}
+    by_source_type: dict[str, int] = {}
+    by_classification: dict[str, int] = {}
+    has_owner = 0
+    has_governance = 0
+
+    for node in nodes:
+        # Count by status
+        status_key = node.status.value if hasattr(node.status, 'value') else "active"
+        by_status[status_key] = by_status.get(status_key, 0) + 1
+
+        # Count by source type
+        if node.source_binding:
+            st = node.source_binding.source_type.value
+            by_source_type[st] = by_source_type.get(st, 0) + 1
+
+        # Count by classification
+        by_classification[node.classification] = by_classification.get(node.classification, 0) + 1
+
+        # Ownership coverage
+        if not node.ownership.is_empty():
+            has_owner += 1
+        if node.ownership.has_governance_roles():
+            has_governance += 1
+
+    return CatalogStatsResponse(
+        total_monikers=len(nodes),
+        by_status=by_status,
+        by_source_type=by_source_type,
+        by_classification=by_classification,
+        ownership_coverage={
+            "has_ownership": has_owner,
+            "has_governance_roles": has_governance,
+            "coverage_percent": round(has_owner / max(len(nodes), 1) * 100, 1),
+        },
+    )
+
+
+# =============================================================================
+# BATCH RESOLUTION - Enterprise-scale multi-moniker resolution
+# =============================================================================
+
+@app.post("/resolve/batch", response_model=BatchResolveResponse, tags=["Resolution"])
+async def batch_resolve(
+    request_body: BatchResolveRequest,
+    caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
+):
+    """
+    Resolve multiple monikers in a single request.
+
+    Much more efficient than individual /resolve calls when you need
+    connection info for many monikers (e.g., batch data pipelines).
+
+    Maximum 100 monikers per request.
+    """
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    if len(request_body.monikers) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 monikers per batch request")
+
+    # Apply rate limiting (counts as N requests)
+    if _rate_limiter:
+        try:
+            caller_id = caller.app_id or caller.user_id or "anonymous"
+            for _ in request_body.monikers:
+                _rate_limiter.check(caller_id)
+        except Exception as e:
+            raise HTTPException(
+                status_code=429,
+                detail=str(e),
+                headers={"Retry-After": str(getattr(e, 'retry_after_seconds', 1))},
+            )
+
+    results = []
+    errors = {}
+
+    for moniker_str in request_body.monikers:
+        try:
+            result = await _service.resolve(moniker_str, caller)
+            node = result.node
+
+            results.append(ResolveResponse(
+                moniker=result.moniker,
+                path=result.path,
+                source_type=result.source.source_type,
+                connection=result.source.connection,
+                query=result.source.query,
+                params=result.source.params,
+                schema_info=result.source.schema,
+                read_only=result.source.read_only,
+                ownership={
+                    "accountable_owner": result.ownership.accountable_owner,
+                    "data_specialist": result.ownership.data_specialist,
+                    "support_channel": result.ownership.support_channel,
+                },
+                binding_path=result.binding_path,
+                sub_path=result.sub_path,
+                status=node.status.value if node and hasattr(node.status, 'value') else None,
+                deprecation_message=node.deprecation_message if node and hasattr(node, 'deprecation_message') else None,
+            ))
+        except Exception as e:
+            errors[moniker_str] = str(e)
+
+    return BatchResolveResponse(results=results, errors=errors)
+
+
+# =============================================================================
+# GOVERNANCE ENDPOINTS - Lifecycle management and audit trail
+# =============================================================================
+
+@app.put("/catalog/{path:path}/status", tags=["Catalog"])
+async def update_catalog_status(
+    request: Request,
+    path: str,
+    body: GovernanceStatusRequest,
+):
+    """
+    Update the governance lifecycle status of a moniker.
+
+    Valid transitions:
+    - draft -> pending_review -> approved -> active
+    - active -> deprecated -> archived
+    - Any status -> draft (reset)
+    """
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    full_path = request.url.path
+    if full_path.startswith("/catalog/") and full_path.endswith("/status"):
+        path = full_path[9:-7]  # Strip "/catalog/" and "/status"
+
+    from .catalog.types import NodeStatus
+    try:
+        new_status = NodeStatus(body.status)
+    except ValueError:
+        valid = [s.value for s in NodeStatus]
+        raise HTTPException(status_code=400, detail=f"Invalid status '{body.status}'. Valid: {valid}")
+
+    node = _service.catalog.update_status(path, new_status, body.actor)
+    if node is None:
+        raise HTTPException(status_code=404, detail=f"Node not found: {path}")
+
+    # If deprecating, set the message and successor fields
+    if new_status == NodeStatus.DEPRECATED and body.deprecation_message:
+        node.deprecation_message = body.deprecation_message
+    if body.successor is not None:
+        node.successor = body.successor
+    if body.sunset_deadline is not None:
+        node.sunset_deadline = body.sunset_deadline
+    if body.migration_guide_url is not None:
+        node.migration_guide_url = body.migration_guide_url
+
+    return {
+        "path": path,
+        "status": new_status.value,
+        "updated_by": body.actor,
+        "message": f"Status changed to {new_status.value}",
+    }
+
+
+@app.get("/catalog/{path:path}/audit", response_model=AuditLogResponse, tags=["Catalog"])
+async def get_audit_log(
+    request: Request,
+    path: str,
+    limit: int = Query(default=100, le=1000, description="Maximum entries"),
+):
+    """
+    Get the audit trail for a moniker.
+
+    Shows all governance actions: status changes, ownership updates, etc.
+    Essential for compliance and regulatory reporting.
+    """
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    full_path = request.url.path
+    if full_path.startswith("/catalog/") and full_path.endswith("/audit"):
+        path = full_path[9:-6]  # Strip "/catalog/" and "/audit"
+
+    entries = _service.catalog.get_audit_log(path=path, limit=limit)
+
+    return AuditLogResponse(
+        entries=[
+            {
+                "timestamp": e.timestamp,
+                "path": e.path,
+                "action": e.action,
+                "actor": e.actor,
+                "old_value": e.old_value,
+                "new_value": e.new_value,
+                "details": e.details,
+            }
+            for e in entries
+        ],
+        path=path,
+        total_entries=len(entries),
+    )
 
 
 # =============================================================================
@@ -1143,6 +1740,9 @@ async def fetch_data(
             from moniker_data.adapters.excel import MockExcelAdapter
             adapter = MockExcelAdapter()
             data = adapter.fetch(result.source.query or "")
+        elif result.source.source_type == "mssql":
+            from moniker_data.adapters.mssql import execute_query as mssql_execute_query
+            data = mssql_execute_query(result.source.query)
         else:
             raise HTTPException(
                 status_code=501,
@@ -1661,7 +2261,7 @@ _LANDING_HTML = """
             </div>
             <div class="card">
                 <h2>Catalog Config</h2>
-                <p>Edit catalog nodes, source bindings, and ownership configuration.</p>
+                <p>Edit monikers, source bindings, and ownership configuration.</p>
                 <a href="/config/ui">Catalog Config UI</a>
             </div>
             <div class="card">

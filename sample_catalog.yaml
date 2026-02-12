@@ -887,3 +887,216 @@ flows.aum:
         SELECT fund_id, as_of_date, aum, aum_change_1d, net_flows_mtd
         FROM DAILY_AUM
         WHERE ('{segments[0]}' = 'ALL' OR fund_id = '{segments[0]}')
+
+# ==========================================================================
+# CREDIT - Credit Risk (MS-SQL) - from demo catalog
+# ==========================================================================
+credit:
+  display_name: Credit Risk
+  description: Counterparty credit exposures, limits, and risk metrics from the Credit Risk Engine (SQL Server)
+  ownership:
+    accountable_owner: credit-risk-governance@firm.com
+    data_specialist: credit-analytics@firm.com
+    support_channel: "#credit-risk-data"
+
+credit.exposures:
+  display_name: Credit Exposures
+  description: Daily counterparty credit exposure snapshots including notional, MTM, PFE, CVA, and expected loss by exposure type
+  source_binding:
+    type: mssql
+    config:
+      server: credit-risk-sql.firm.com
+      port: 1433
+      database: CreditRisk
+      driver: "ODBC Driver 17 for SQL Server"
+      query: >
+        SELECT ASOF_DATE, COUNTERPARTY_ID, COUNTERPARTY_NAME,
+        SECTOR, RATING, COUNTRY, EXPOSURE_TYPE, NOTIONAL,
+        MARK_TO_MARKET, PFE, CVA, LGD, PD, EXPECTED_LOSS, CURRENCY
+        FROM [dbo].[credit_exposures]
+        WHERE ASOF_DATE >= DATEADD(DAY, -30, GETDATE())
+  schema:
+    description: Daily counterparty credit exposure snapshots with full risk metrics
+    semantic_tags: [credit, risk, counterparty, exposure, timeseries]
+    primary_key: [ASOF_DATE, COUNTERPARTY_ID, EXPOSURE_TYPE]
+    granularity: daily per-counterparty per-exposure-type
+    use_cases:
+      - counterparty risk monitoring
+      - limit utilization analysis
+      - CVA desk hedging
+      - regulatory reporting (SA-CCR)
+      - concentration risk assessment
+    related_monikers: [credit.limits]
+    columns:
+      - name: ASOF_DATE
+        type: date
+        description: Business date of the exposure snapshot
+        semantic_type: timestamp
+        example: "2026-01-15"
+      - name: COUNTERPARTY_ID
+        type: string
+        description: Unique counterparty identifier
+        semantic_type: identifier
+        example: CP001
+      - name: COUNTERPARTY_NAME
+        type: string
+        description: Legal entity name
+        semantic_type: dimension
+        example: Goldman Sachs Group
+      - name: SECTOR
+        type: string
+        description: Industry sector classification
+        semantic_type: dimension
+        example: Financials
+      - name: RATING
+        type: string
+        description: Credit rating (S&P scale)
+        semantic_type: dimension
+        example: AA-
+      - name: COUNTRY
+        type: string
+        description: Country of incorporation (ISO 3166-1 alpha-2)
+        semantic_type: dimension
+        example: US
+      - name: EXPOSURE_TYPE
+        type: string
+        description: Type of credit exposure
+        semantic_type: dimension
+        example: Derivative
+      - name: NOTIONAL
+        type: float
+        description: Notional amount of the exposure
+        semantic_type: measure
+        example: "150000000.00"
+      - name: MARK_TO_MARKET
+        type: float
+        description: Current mark-to-market value
+        semantic_type: measure
+        example: "2350000.50"
+      - name: PFE
+        type: float
+        description: Potential Future Exposure at 97.5% confidence
+        semantic_type: measure
+        example: "12500000.00"
+      - name: CVA
+        type: float
+        description: Credit Valuation Adjustment
+        semantic_type: measure
+        example: "45000.00"
+      - name: LGD
+        type: float
+        description: Loss Given Default (0-1)
+        semantic_type: measure
+        example: "0.45"
+      - name: PD
+        type: float
+        description: Probability of Default (annualized)
+        semantic_type: measure
+        example: "0.002"
+      - name: EXPECTED_LOSS
+        type: float
+        description: Expected loss = Notional x LGD x PD
+        semantic_type: measure
+        example: "135000.00"
+      - name: CURRENCY
+        type: string
+        description: Exposure currency (ISO 4217)
+        semantic_type: dimension
+        example: USD
+  data_quality:
+    dq_owner: credit-dq@firm.com
+    quality_score: 92
+    known_issues:
+      - "Weekend gaps in timeseries -- no weekend data points"
+      - "Petrobras (CP006) rating may lag by 1 business day"
+    validation_rules:
+      - "NOTIONAL > 0"
+      - "LGD BETWEEN 0 AND 1"
+      - "PD BETWEEN 0 AND 1"
+    last_validated: "2026-01-28T06:30:00Z"
+  tags: [credit, risk, mssql, counterparty, timeseries]
+
+credit.limits:
+  display_name: Credit Limits
+  description: Counterparty credit limits with utilization, approval, and expiry information
+  source_binding:
+    type: mssql
+    config:
+      server: credit-risk-sql.firm.com
+      port: 1433
+      database: CreditRisk
+      driver: "ODBC Driver 17 for SQL Server"
+      query: >
+        SELECT COUNTERPARTY_ID, LIMIT_TYPE, LIMIT_AMOUNT,
+        UTILIZED, AVAILABLE, APPROVED_BY, EXPIRY_DATE
+        FROM [dbo].[credit_limits]
+  schema:
+    description: Counterparty credit limits by type with utilization tracking
+    semantic_tags: [credit, limits, counterparty, governance]
+    primary_key: [COUNTERPARTY_ID, LIMIT_TYPE]
+    use_cases:
+      - limit utilization monitoring
+      - limit breach alerts
+      - counterparty onboarding
+      - credit committee reporting
+    related_monikers: [credit.exposures]
+    granularity: per-counterparty per-limit-type
+    columns:
+      - name: COUNTERPARTY_ID
+        type: string
+        description: Unique counterparty identifier
+        semantic_type: identifier
+        example: CP001
+      - name: LIMIT_TYPE
+        type: string
+        description: Type of credit limit
+        semantic_type: dimension
+        example: SingleName
+      - name: LIMIT_AMOUNT
+        type: float
+        description: Approved credit limit
+        semantic_type: measure
+        example: "500000000.00"
+      - name: UTILIZED
+        type: float
+        description: Amount currently utilized
+        semantic_type: measure
+        example: "350000000.00"
+      - name: AVAILABLE
+        type: float
+        description: Remaining available limit
+        semantic_type: measure
+        example: "150000000.00"
+      - name: APPROVED_BY
+        type: string
+        description: Approver name and title
+        semantic_type: dimension
+        example: "J. Smith (CRO)"
+      - name: EXPIRY_DATE
+        type: date
+        description: Limit expiry date
+        semantic_type: timestamp
+        example: "2027-06-15"
+  data_quality:
+    dq_owner: credit-dq@firm.com
+    quality_score: 98
+    validation_rules:
+      - "LIMIT_AMOUNT > 0"
+      - "UTILIZED >= 0"
+      - "AVAILABLE = LIMIT_AMOUNT - UTILIZED"
+      - "EXPIRY_DATE > current_date"
+    last_validated: "2026-01-28T06:30:00Z"
+  tags: [credit, risk, mssql, limits, governance]
+
+# ==========================================================================
+# REPORTS/REGULATORY - Excel files (using slash path from demo catalog)
+# ==========================================================================
+reports/regulatory:
+  display_name: Regulatory Reports
+  classification: restricted
+  source_binding:
+    type: excel
+    config:
+      base_path: /data/reports/regulatory
+      file_pattern: "{segments[0]}/{segments[1]}.xlsx"
+      sheet: Summary

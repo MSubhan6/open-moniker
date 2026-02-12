@@ -2,15 +2,44 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Iterator
 
 from ..moniker.types import MonikerPath
-from .types import CatalogNode, Ownership, ResolvedOwnership, SourceBinding
+from .types import CatalogNode, Ownership, ResolvedOwnership, SourceBinding, NodeStatus, AuditEntry
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ..domains.registry import DomainRegistry
+
+
+@dataclass
+class CatalogDiff:
+    """Result of diffing old vs new catalog nodes."""
+    added_paths: list[str] = field(default_factory=list)
+    removed_paths: list[str] = field(default_factory=list)
+    binding_changed_paths: list[str] = field(default_factory=list)
+    status_changed_paths: list[str] = field(default_factory=list)
+
+    @property
+    def has_breaking_changes(self) -> bool:
+        return len(self.removed_paths) > 0 or len(self.binding_changed_paths) > 0
+
+    def summary(self) -> str:
+        parts = []
+        if self.added_paths:
+            parts.append(f"{len(self.added_paths)} added")
+        if self.removed_paths:
+            parts.append(f"{len(self.removed_paths)} removed")
+        if self.binding_changed_paths:
+            parts.append(f"{len(self.binding_changed_paths)} binding changed")
+        if self.status_changed_paths:
+            parts.append(f"{len(self.status_changed_paths)} status changed")
+        return ", ".join(parts) if parts else "no changes"
 
 
 @dataclass
@@ -27,6 +56,8 @@ class CatalogRegistry:
     _nodes: dict[str, CatalogNode] = field(default_factory=dict)
     _children: dict[str, set[str]] = field(default_factory=dict)  # parent -> children paths
     _lock: threading.RLock = field(default_factory=threading.RLock)
+    _audit_log: list[AuditEntry] = field(default_factory=list)
+    _path_index: dict[str, set[str]] = field(default_factory=dict)  # prefix -> paths for O(1) prefix lookups
 
     def register(self, node: CatalogNode) -> None:
         """Register a catalog node."""
@@ -206,14 +237,18 @@ class CatalogRegistry:
             # First check exact match
             node = self._nodes.get(path_str)
             if node and node.source_binding:
-                return (node.source_binding, path_str)
+                # Skip non-resolvable statuses
+                if hasattr(node, 'status') and node.status in (NodeStatus.ARCHIVED, NodeStatus.DRAFT, NodeStatus.PENDING_REVIEW):
+                    pass  # Fall through to ancestor check
+                else:
+                    return (node.source_binding, path_str)
 
             # Walk up hierarchy
             for ancestor in reversed(self._ancestor_paths(path_str)):
                 node = self._nodes.get(ancestor)
                 if node and node.source_binding:
-                    # Check if this binding can handle sub-paths
-                    # (most source types can - they just append the sub-path)
+                    if hasattr(node, 'status') and node.status in (NodeStatus.ARCHIVED, NodeStatus.DRAFT, NodeStatus.PENDING_REVIEW):
+                        continue
                     return (node.source_binding, ancestor)
 
             return None
@@ -264,6 +299,210 @@ class CatalogRegistry:
             for p, node in self._nodes.items():
                 if p == path_str or p.startswith(prefix):
                     yield node
+
+    def find_by_status(self, status: NodeStatus) -> list[CatalogNode]:
+        """Get all nodes with a given lifecycle status."""
+        with self._lock:
+            return [n for n in self._nodes.values() if n.status == status]
+
+    def find_active(self) -> list[CatalogNode]:
+        """Get all active (resolvable) nodes."""
+        return self.find_by_status(NodeStatus.ACTIVE)
+
+    def find_deprecated(self) -> list[CatalogNode]:
+        """Get all deprecated nodes."""
+        return self.find_by_status(NodeStatus.DEPRECATED)
+
+    def update_status(self, path: str, new_status: NodeStatus, actor: str) -> CatalogNode | None:
+        """Update the lifecycle status of a node and log it."""
+        with self._lock:
+            node = self._nodes.get(path)
+            if node is None:
+                return None
+
+            old_status = node.status
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+
+            node.status = new_status
+            node.updated_at = now
+            if new_status == NodeStatus.APPROVED:
+                node.approved_by = actor
+
+            self._audit_log.append(AuditEntry(
+                timestamp=now,
+                path=path,
+                action="status_changed",
+                actor=actor,
+                old_value=old_status.value,
+                new_value=new_status.value,
+            ))
+
+            return node
+
+    def add_audit_entry(self, entry: AuditEntry) -> None:
+        """Add an audit entry."""
+        with self._lock:
+            self._audit_log.append(entry)
+
+    def get_audit_log(self, path: str | None = None, limit: int = 100) -> list[AuditEntry]:
+        """Get audit log entries, optionally filtered by path."""
+        with self._lock:
+            if path:
+                entries = [e for e in self._audit_log if e.path == path]
+            else:
+                entries = list(self._audit_log)
+            return entries[-limit:]
+
+    def search(self, query: str, status: NodeStatus | None = None, limit: int = 50) -> list[CatalogNode]:
+        """Search catalog nodes by path, display_name, description, or tags."""
+        query_lower = query.lower()
+        with self._lock:
+            results = []
+            for node in self._nodes.values():
+                if status and node.status != status:
+                    continue
+                if (query_lower in node.path.lower()
+                    or query_lower in node.display_name.lower()
+                    or query_lower in node.description.lower()
+                    or any(query_lower in t.lower() for t in node.tags)):
+                    results.append(node)
+                    if len(results) >= limit:
+                        break
+            return results
+
+    def count(self) -> dict[str, int]:
+        """Get counts by status."""
+        with self._lock:
+            counts: dict[str, int] = {}
+            for node in self._nodes.values():
+                key = node.status.value if hasattr(node.status, 'value') else str(node.status)
+                counts[key] = counts.get(key, 0) + 1
+            counts["total"] = len(self._nodes)
+            return counts
+
+    def paginated_paths(self, cursor: str | None = None, limit: int = 100, status: NodeStatus | None = None) -> tuple[list[str], str | None]:
+        """Get paginated list of paths with optional status filter."""
+        with self._lock:
+            all_paths = sorted(self._nodes.keys())
+            if status:
+                all_paths = [p for p in all_paths if self._nodes[p].status == status]
+
+            # Apply cursor (cursor is the last path from previous page)
+            if cursor:
+                start_idx = 0
+                for i, p in enumerate(all_paths):
+                    if p > cursor:
+                        start_idx = i
+                        break
+                else:
+                    return [], None
+                all_paths = all_paths[start_idx:]
+
+            page = all_paths[:limit]
+            next_cursor = page[-1] if len(page) == limit else None
+            return page, next_cursor
+
+    def diff(self, new_nodes: list[CatalogNode]) -> CatalogDiff:
+        """Diff current catalog against a proposed new set of nodes."""
+        new_map = {n.path: n for n in new_nodes}
+        result = CatalogDiff()
+
+        with self._lock:
+            old_paths = set(self._nodes.keys())
+            new_paths = set(new_map.keys())
+
+            result.added_paths = sorted(new_paths - old_paths)
+            result.removed_paths = sorted(old_paths - new_paths)
+
+            # Check common paths for changes
+            for path in sorted(old_paths & new_paths):
+                old_node = self._nodes[path]
+                new_node = new_map[path]
+
+                # Binding changed?
+                old_fp = old_node.source_binding.fingerprint if old_node.source_binding else None
+                new_fp = new_node.source_binding.fingerprint if new_node.source_binding else None
+                if old_fp != new_fp:
+                    result.binding_changed_paths.append(path)
+
+                # Status changed?
+                if old_node.status != new_node.status:
+                    result.status_changed_paths.append(path)
+
+        return result
+
+    def validated_replace(
+        self,
+        new_nodes: list[CatalogNode],
+        block_breaking: bool = False,
+        audit_actor: str = "system",
+    ) -> tuple[CatalogDiff, bool]:
+        """Diff, audit, and optionally replace the catalog.
+
+        Args:
+            new_nodes: The proposed new set of catalog nodes.
+            block_breaking: If True, refuse to apply if there are breaking changes.
+            audit_actor: Actor name for audit log entries.
+
+        Returns:
+            (diff, applied) — the diff result and whether the replace was applied.
+        """
+        catalog_diff = self.diff(new_nodes)
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Log audit entries for significant changes
+        for path in catalog_diff.removed_paths:
+            self.add_audit_entry(AuditEntry(
+                timestamp=now,
+                path=path,
+                action="node_removed",
+                actor=audit_actor,
+                details="Node removed during catalog reload",
+            ))
+
+        for path in catalog_diff.binding_changed_paths:
+            self.add_audit_entry(AuditEntry(
+                timestamp=now,
+                path=path,
+                action="binding_changed",
+                actor=audit_actor,
+                details="Source binding changed during catalog reload",
+            ))
+
+        for path in catalog_diff.added_paths:
+            self.add_audit_entry(AuditEntry(
+                timestamp=now,
+                path=path,
+                action="node_added",
+                actor=audit_actor,
+                details="Node added during catalog reload",
+            ))
+
+        logger.info(f"Catalog reload diff: {catalog_diff.summary()}")
+
+        if block_breaking and catalog_diff.has_breaking_changes:
+            logger.warning("Catalog reload blocked: breaking changes detected")
+            return catalog_diff, False
+
+        self.atomic_replace(new_nodes)
+        return catalog_diff, True
+
+    def validate_successors(self) -> list[str]:
+        """Validate all successor pointers reference existing nodes and detect self-references.
+
+        Returns:
+            List of error messages (empty if all valid).
+        """
+        errors = []
+        with self._lock:
+            for path, node in self._nodes.items():
+                if node.successor:
+                    if node.successor == path:
+                        errors.append(f"{path}: successor points to itself")
+                    elif node.successor not in self._nodes:
+                        errors.append(f"{path}: successor '{node.successor}' does not exist")
+        return errors
 
     @staticmethod
     def _parent_path(path: str) -> str | None:

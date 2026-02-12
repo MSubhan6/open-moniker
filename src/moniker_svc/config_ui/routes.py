@@ -227,7 +227,7 @@ async def config_ui():
 
 @router.get("/nodes", response_model=NodeListResponse)
 async def list_nodes():
-    """List all catalog nodes."""
+    """List all monikers."""
     catalog = _get_catalog()
     nodes = catalog.all_nodes()
 
@@ -240,7 +240,7 @@ async def list_nodes():
 @router.get("/search")
 async def search_nodes(q: str = ""):
     """
-    Full text search over catalog nodes.
+    Full text search over monikers.
 
     Searches across path, display_name, description, and tags.
     """
@@ -317,7 +317,7 @@ async def get_node(path: str):
 
 @router.post("/nodes", response_model=CatalogNodeModel)
 async def create_node(request: CreateNodeRequest):
-    """Create a new catalog node."""
+    """Create a new moniker."""
     catalog = _get_catalog()
 
     # Check if node already exists
@@ -338,7 +338,7 @@ async def create_node(request: CreateNodeRequest):
 
 @router.put("/nodes/{path:path}", response_model=CatalogNodeModel)
 async def update_node(path: str, request: UpdateNodeRequest):
-    """Update an existing catalog node."""
+    """Update an existing moniker."""
     catalog = _get_catalog()
 
     # Get existing node
@@ -360,7 +360,7 @@ async def update_node(path: str, request: UpdateNodeRequest):
 
 @router.delete("/nodes/{path:path}", response_model=DeleteResponse)
 async def delete_node(path: str):
-    """Delete a catalog node."""
+    """Delete a moniker."""
     catalog = _get_catalog()
 
     # Check node exists
@@ -424,14 +424,14 @@ async def save_to_yaml():
 
         # Build message based on config
         if _show_file_paths:
-            message = f"Saved {len(nodes)} nodes to {abs_path}"
+            message = f"Saved {len(nodes)} monikers to {abs_path}"
         else:
-            message = f"Saved {len(nodes)} nodes"
+            message = f"Saved {len(nodes)} monikers"
 
         return SaveResponse(
             success=True,
             path=str(abs_path) if _show_file_paths else "",
-            node_count=len(nodes),
+            moniker_count=len(nodes),
             message=message,
         )
     except Exception as e:
@@ -464,8 +464,8 @@ async def reload_from_yaml():
 
         return ReloadResponse(
             success=True,
-            node_count=len(new_nodes),
-            message=f"Reloaded {len(new_nodes)} nodes from {source_path}",
+            moniker_count=len(new_nodes),
+            message=f"Reloaded {len(new_nodes)} monikers from {source_path}",
         )
     except Exception as e:
         logger.error(f"Failed to reload catalog: {e}")
