@@ -57,6 +57,14 @@ dev = [
     "pyyaml>=6.0.0",
 ]
 
+# Testing with FakeSnow (Snowflake emulation)
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "fakesnow>=0.9.0",
+]
+
 # All optional adapters (except commercial)
 all = [
     "snowflake-connector-python>=3.6.0",
@@ -82,6 +90,9 @@ packages = ["src/moniker_svc"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests",
+]
 
 [tool.ruff]
 line-length = 100

@@ -1,0 +1,186 @@
+# Business Models Configuration
+# Measures, metrics, and fields that appear across monikers
+
+# =============================================================================
+# Risk Analytics Domain
+# =============================================================================
+
+risk.analytics:
+  display_name: Risk Analytics
+  description: Risk measurement and analysis models
+  ownership:
+    methodology_owner: quant-research@firm.com
+    support_channel: "#risk-methodology"
+
+risk.analytics/dv01:
+  display_name: Dollar Value of 01
+  description: Change in portfolio value for a 1 basis point parallel shift in yield curve
+  formula: "dV/dy × 0.0001"
+  unit: USD
+  documentation_url: https://wiki.firm.com/display/RISK/DV01
+
+  ownership:
+    methodology_owner: quant-research@firm.com
+    business_steward: risk-committee@firm.com
+    support_channel: "#risk-methodology"
+
+  appears_in:
+    - moniker_pattern: "risk.cvar/*/*"
+      column_name: DV01
+    - moniker_pattern: "portfolios/*/risk/*"
+      column_name: DV01
+    - moniker_pattern: "fixed_income.govies/*"
+      column_name: DURATION
+      notes: "Named DURATION in treasury data for historical reasons"
+
+  semantic_tags:
+    - interest-rate-risk
+    - duration
+    - fixed-income
+
+risk.analytics/convexity:
+  display_name: Convexity
+  description: Second derivative of price with respect to yield, measures curvature of price-yield relationship
+  formula: "d²V/dy²"
+  unit: years²
+  documentation_url: https://wiki.firm.com/display/RISK/Convexity
+
+  ownership:
+    methodology_owner: quant-research@firm.com
+
+  appears_in:
+    - moniker_pattern: "fixed_income.*/*"
+      column_name: CONVEXITY
+    - moniker_pattern: "risk.cvar/*/*"
+      column_name: CVX
+
+  semantic_tags:
+    - interest-rate-risk
+    - fixed-income
+
+risk.analytics/var:
+  display_name: Value at Risk
+  description: Maximum expected loss at a given confidence level over a specified time horizon
+  formula: "VaR_α = -inf{x : P(L ≤ x) ≥ α}"
+  unit: USD
+  documentation_url: https://wiki.firm.com/display/RISK/VaR
+
+  ownership:
+    methodology_owner: quant-research@firm.com
+    business_steward: risk-committee@firm.com
+
+  appears_in:
+    - moniker_pattern: "risk.cvar/*/*"
+      column_name: VAR_95
+    - moniker_pattern: "analytics.risk/var/*"
+
+  semantic_tags:
+    - market-risk
+    - portfolio-risk
+
+# =============================================================================
+# Return Attribution Domain
+# =============================================================================
+
+return.attribution:
+  display_name: Return Attribution
+  description: Performance and attribution models
+  ownership:
+    methodology_owner: performance-analytics@firm.com
+    support_channel: "#performance"
+
+return.attribution/alpha:
+  display_name: Alpha
+  description: Risk-adjusted excess return relative to benchmark
+  formula: "R_p - β × R_b"
+  unit: percent
+  documentation_url: https://wiki.firm.com/display/PERF/Alpha
+
+  appears_in:
+    - moniker_pattern: "performance/*/attribution"
+      column_name: ALPHA
+    - moniker_pattern: "analytics/returns/*"
+      column_name: EXCESS_RETURN
+
+  semantic_tags:
+    - performance
+    - attribution
+
+return.attribution/beta:
+  display_name: Beta
+  description: Sensitivity of portfolio returns to benchmark returns
+  formula: "Cov(R_p, R_b) / Var(R_b)"
+  unit: ratio
+  documentation_url: https://wiki.firm.com/display/PERF/Beta
+
+  appears_in:
+    - moniker_pattern: "performance/*/attribution"
+      column_name: BETA
+    - moniker_pattern: "analytics/risk/*"
+      column_name: MKT_BETA
+
+  semantic_tags:
+    - performance
+    - market-risk
+
+return.attribution/sharpe:
+  display_name: Sharpe Ratio
+  description: Risk-adjusted return measuring excess return per unit of volatility
+  formula: "(R_p - R_f) / σ_p"
+  unit: ratio
+  documentation_url: https://wiki.firm.com/display/PERF/SharpeRatio
+
+  appears_in:
+    - moniker_pattern: "performance/*/summary"
+      column_name: SHARPE
+    - moniker_pattern: "analytics/returns/*"
+      column_name: SHARPE_RATIO
+
+  semantic_tags:
+    - performance
+    - risk-adjusted
+
+# =============================================================================
+# Market Data Domain
+# =============================================================================
+
+market.prices:
+  display_name: Market Prices
+  description: Price and quote models
+  ownership:
+    methodology_owner: market-data-ops@firm.com
+    support_channel: "#market-data"
+
+market.prices/mid:
+  display_name: Mid Price
+  description: Average of bid and ask prices
+  formula: "(bid + ask) / 2"
+  unit: price
+  data_type: decimal
+
+  appears_in:
+    - moniker_pattern: "prices.*/*"
+      column_name: MID_PRICE
+    - moniker_pattern: "quotes/*"
+      column_name: MID
+
+  semantic_tags:
+    - pricing
+    - market-data
+
+market.prices/spread:
+  display_name: Bid-Ask Spread
+  description: Difference between ask and bid prices
+  formula: "ask - bid"
+  unit: price
+  data_type: decimal
+
+  appears_in:
+    - moniker_pattern: "prices.*/*"
+      column_name: SPREAD
+    - moniker_pattern: "quotes/*"
+      column_name: BID_ASK_SPREAD
+
+  semantic_tags:
+    - pricing
+    - liquidity

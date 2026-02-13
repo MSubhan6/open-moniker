@@ -24,8 +24,12 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .adapters import AdapterRegistry, SnowflakeAdapter, OracleAdapter, MssqlAdapter
+from .adapters.base import InMemoryAdapter
 from .auth import create_composite_authenticator, get_caller_identity, set_authenticator
 from .cache.memory import InMemoryCache
+from .cache.redis import RedisCache
+from .cache.query_refresh import CachedQueryManager, CacheStatus
 from .catalog.registry import CatalogRegistry
 from .catalog.loader import load_catalog
 from .catalog.types import (
@@ -33,6 +37,7 @@ from .catalog.types import (
     DataSchema, ColumnSchema, DataQuality, Freshness, SLA, AccessPolicy, Documentation,
 )
 from .config import Config
+from .moniker.parser import parse_moniker
 from .identity.extractor import extract_identity
 from .moniker.parser import MonikerParseError
 from .service import MonikerService, AccessDeniedError, NotFoundError, ResolutionError
@@ -42,16 +47,20 @@ from .telemetry.events import CallerIdentity, EventOutcome
 from .telemetry.sinks.console import ConsoleSink
 from .telemetry.sinks.file import RotatingFileSink
 from .telemetry.sinks.zmq import ZmqSink
-from .sql_catalog import routes as sql_catalog_routes
 from .config_ui import routes as config_ui_routes
 from .domains import routes as domain_routes
 from .domains import DomainRegistry, load_domains_from_yaml
+from .models import routes as model_routes
+from .models import ModelRegistry, load_models_from_yaml
 
 
 logger = logging.getLogger(__name__)
 
 # Domain registry - global singleton
 _domain_registry: DomainRegistry | None = None
+
+# Model registry - global singleton
+_model_registry: ModelRegistry | None = None
 
 
 # Response models
@@ -84,6 +93,16 @@ class ListResponse(BaseModel):
     path: str
 
 
+class ModelSummary(BaseModel):
+    """Summary of a business model for cross-referencing."""
+    path: str
+    display_name: str = ""
+    description: str = ""
+    unit: str | None = None
+    formula: str | None = None
+    documentation_url: str | None = None
+
+
 class DescribeResponse(BaseModel):
     path: str
     display_name: str | None = None
@@ -104,6 +123,9 @@ class DescribeResponse(BaseModel):
 
     # Documentation links (Confluence, runbooks, etc.)
     documentation: dict[str, Any] | None = None
+
+    # Business models that appear in this moniker
+    models: list[ModelSummary] | None = None
 
 
 class LineageResponse(BaseModel):
@@ -203,6 +225,13 @@ class FetchResponse(BaseModel):
     truncated: bool = False
     query_executed: str | None = None
     execution_time_ms: float | None = None
+    # Cache metadata
+    cached: bool = False
+    cache_status: str | None = None  # fresh, stale, loading
+    cache_age_seconds: float | None = None
+    cache_last_refresh: str | None = None
+    cache_next_refresh: str | None = None
+    cache_message: str | None = None
 
 
 class MetadataResponse(BaseModel):
@@ -259,6 +288,11 @@ TreeNodeResponse.model_rebuild()
 _service: MonikerService | None = None
 _telemetry_task: asyncio.Task | None = None
 _batcher_task: asyncio.Task | None = None
+_redis_cache: RedisCache | None = None
+_cache_manager: CachedQueryManager | None = None
+_cache_refresh_task: asyncio.Task | None = None
+_adapter_registry: AdapterRegistry | None = None
+_catalog_dir: Path | None = None
 
 # Enterprise governance singletons
 _rate_limiter = None
@@ -813,7 +847,7 @@ async def lifespan(app: FastAPI):
     import os
     from pathlib import Path
 
-    global _service, _telemetry_task, _batcher_task
+    global _service, _telemetry_task, _batcher_task, _adapter_registry, _catalog_dir
 
     logger.info("Starting moniker resolution service...")
 
@@ -832,13 +866,23 @@ async def lifespan(app: FastAPI):
     if config.catalog.definition_file:
         config_dir = Path(config_path).parent.resolve()
         catalog_definition_path = (config_dir / config.catalog.definition_file).resolve()
+        _catalog_dir = catalog_definition_path.parent
         logger.info(f"Loading catalog from: {catalog_definition_path}")
         catalog = load_catalog(str(catalog_definition_path))
     else:
         logger.info("Using demo catalog (no definition_file configured)")
         catalog = create_demo_catalog()
+        _catalog_dir = Path.cwd()
 
     logger.info(f"Catalog loaded with {len(catalog.all_paths())} paths")
+
+    # Initialize adapter registry with real adapters
+    _adapter_registry = AdapterRegistry()
+    _adapter_registry.register(SnowflakeAdapter(catalog_dir=_catalog_dir))
+    _adapter_registry.register(OracleAdapter(catalog_dir=_catalog_dir))
+    _adapter_registry.register(MssqlAdapter(catalog_dir=_catalog_dir))
+    _adapter_registry.register(InMemoryAdapter())
+    logger.info(f"Registered adapters: {[t.value for t in _adapter_registry.all_types()]}")
 
     cache = InMemoryCache(
         max_size=config.cache.max_size,
@@ -881,14 +925,6 @@ async def lifespan(app: FastAPI):
         set_authenticator(None)
         logger.info("Authentication disabled")
 
-    # Initialize SQL Catalog if enabled
-    if config.sql_catalog.enabled:
-        sql_catalog_routes.configure(
-            db_path=config.sql_catalog.db_path,
-            source_db_path=config.sql_catalog.source_db_path,
-        )
-        logger.info(f"SQL Catalog enabled (db_path={config.sql_catalog.db_path})")
-
     # Initialize Config UI if enabled (will get domain_registry later)
     config_ui_enabled = config.config_ui.enabled
     if config_ui_enabled:
@@ -925,12 +961,110 @@ async def lifespan(app: FastAPI):
             domain_registry=_domain_registry,
         )
 
+    # Initialize Business Models Configuration
+    global _model_registry
+    _model_registry = ModelRegistry()
+    if config.models.enabled:
+        models_yaml_path = config.models.definition_file or os.environ.get("MODELS_CONFIG", "models.yaml")
+        if Path(models_yaml_path).exists():
+            models = load_models_from_yaml(models_yaml_path, _model_registry)
+            logger.info(f"Loaded {len(models)} business models from {models_yaml_path}")
+        else:
+            logger.info(f"No models config found at {models_yaml_path}, starting with empty registry")
+
+        model_routes.configure(
+            model_registry=_model_registry,
+            catalog_registry=catalog,
+            models_yaml_path=models_yaml_path,
+        )
+        logger.info("Business models configuration enabled")
+    else:
+        logger.info("Business models disabled")
+
+    # Initialize Redis cache and query refresh manager
+    global _redis_cache, _cache_manager, _cache_refresh_task
+
+    _redis_cache = RedisCache(config.redis)
+    redis_connected = await _redis_cache.connect()
+
+    if redis_connected:
+        _cache_manager = CachedQueryManager(redis_cache=_redis_cache)
+
+        # Register cached queries from catalog
+        cached_count = 0
+        for node in catalog.all_nodes():
+            if (node.source_binding and
+                node.source_binding.cache and
+                node.source_binding.cache.enabled):
+
+                # Create fetch function for this node
+                async def make_fetch_fn(path: str, binding: SourceBinding):
+                    async def fetch_fn():
+                        data = []
+                        columns = []
+
+                        try:
+                            # Use real adapter from registry
+                            if _adapter_registry and _adapter_registry.has(binding.source_type):
+                                adapter = _adapter_registry.get(binding.source_type)
+                                moniker = parse_moniker(f"moniker://{path}")
+                                result = await adapter.fetch(moniker, binding)
+                                data = result.data if isinstance(result.data, list) else [result.data]
+                                columns = result.metadata.get("columns", [])
+                                if not columns and data:
+                                    columns = list(data[0].keys()) if isinstance(data[0], dict) else []
+                            else:
+                                logger.warning(f"No adapter for source type: {binding.source_type}")
+                        except ImportError as e:
+                            logger.warning(f"Driver not available for {path}: {e}")
+                        except Exception as e:
+                            logger.error(f"Error fetching {path}: {e}")
+                            raise
+
+                        return data, columns
+                    return fetch_fn
+
+                fetch_fn = await make_fetch_fn(node.path, node.source_binding)
+                _cache_manager.register(
+                    path=node.path,
+                    cache_config=node.source_binding.cache,
+                    fetch_fn=fetch_fn,
+                )
+                cached_count += 1
+
+        if cached_count > 0:
+            logger.info(f"Registered {cached_count} cached queries")
+
+            # Refresh queries marked for startup
+            startup_results = await _cache_manager.refresh_all_startup()
+            success_count = sum(1 for v in startup_results.values() if v)
+            logger.info(f"Startup refresh: {success_count}/{len(startup_results)} queries refreshed")
+
+            # Start background refresh loop
+            _cache_refresh_task = asyncio.create_task(_cache_manager.refresh_loop())
+    else:
+        logger.info("Redis not available, cached queries disabled")
+
     logger.info("Moniker resolution service started")
 
     yield
 
     # Shutdown
     logger.info("Shutting down moniker resolution service...")
+
+    # Stop cache refresh loop
+    if _cache_refresh_task:
+        _cache_refresh_task.cancel()
+        try:
+            await _cache_refresh_task
+        except asyncio.CancelledError:
+            pass
+
+    if _cache_manager:
+        await _cache_manager.stop()
+
+    if _redis_cache:
+        await _redis_cache.close()
 
     if _telemetry_task:
         _telemetry_task.cancel()
@@ -984,7 +1118,7 @@ Resolves monikers (semantic data paths) to source connection info.
         {"name": "Data Fetch", "description": "Server-side data retrieval and metadata"},
         {"name": "Catalog", "description": "Browse and explore the moniker catalog"},
         {"name": "Domains", "description": "Domain governance and configuration"},
-        {"name": "SQL Catalog", "description": "SQL statement discovery and cataloging"},
+        {"name": "Models", "description": "Business models/measures that appear across monikers"},
         {"name": "Config", "description": "Catalog configuration management"},
         {"name": "Telemetry", "description": "Access tracking and reporting"},
         {"name": "Health", "description": "Service health and diagnostics"},
@@ -997,9 +1131,9 @@ if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 # Mount routers
-app.include_router(sql_catalog_routes.router)
 app.include_router(config_ui_routes.router)
 app.include_router(domain_routes.router)
+app.include_router(model_routes.router)
 
 
 @app.exception_handler(MonikerParseError)
@@ -1297,6 +1431,23 @@ async def describe_moniker(
     if result.node and result.node.documentation:
         documentation = result.node.documentation.to_dict()
 
+    # Get linked business models from model registry
+    models_list = None
+    if _model_registry:
+        linked_models = _model_registry.models_for_moniker(path)
+        if linked_models:
+            models_list = [
+                ModelSummary(
+                    path=m.path,
+                    display_name=m.display_name,
+                    description=m.description,
+                    unit=m.unit,
+                    formula=m.formula,
+                    documentation_url=m.documentation_url,
+                )
+                for m in linked_models
+            ]
+
     return DescribeResponse(
         path=result.path,
         display_name=result.node.display_name if result.node else None,
@@ -1325,6 +1476,7 @@ async def describe_moniker(
         freshness=freshness,
         schema=schema,
         documentation=documentation,
+        models=models_list,
     )
 
 
@@ -1690,6 +1842,7 @@ async def fetch_data(
     path: str,
     caller: Annotated[CallerIdentity, Depends(get_caller_identity)],
     limit: int = Query(default=100, le=10000, description="Max rows to return"),
+    bypass_cache: bool = Query(default=False, description="Skip cache and fetch fresh data"),
 ):
     """
     Fetch actual data by executing the query server-side.
@@ -1701,6 +1854,11 @@ async def fetch_data(
     - Small datasets where direct fetch is convenient
     - AI agents that need data without managing connections
     - Demos and exploration
+
+    **Caching:**
+    For expensive queries with cache enabled, results are served from Redis cache.
+    The response includes cache metadata (status, age, last refresh time).
+    Use `bypass_cache=true` to force a fresh fetch.
 
     For large datasets, use /resolve and execute client-side.
     """
@@ -1716,50 +1874,114 @@ async def fetch_data(
     moniker_str = f"moniker://{path}"
     start_time = time.time()
 
-    # First resolve the moniker
+    # Check if this path has a cached result
+    if _cache_manager and _cache_manager.is_registered(path) and not bypass_cache:
+        cached_result = await _cache_manager.get_cached_result(path)
+
+        # Handle loading state - return 202 Accepted with message
+        if cached_result.status == CacheStatus.LOADING:
+            # For loading state, we return a special response
+            # The client should retry after a short delay
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "moniker": moniker_str,
+                    "path": path,
+                    "source_type": "unknown",
+                    "row_count": 0,
+                    "columns": [],
+                    "data": [],
+                    "truncated": False,
+                    "cached": False,
+                    "cache_status": "loading",
+                    "cache_message": cached_result.message or "Data is loading, please retry shortly",
+                },
+            )
+
+        # For fresh or stale data, return the cached result
+        if cached_result.data is not None:
+            data = cached_result.data
+            columns = cached_result.columns or (list(data[0].keys()) if data else [])
+
+            # Apply limit
+            truncated = len(data) > limit
+            data = data[:limit]
+
+            # Resolve to get source type
+            result = await _service.resolve(moniker_str, caller)
+
+            return FetchResponse(
+                moniker=moniker_str,
+                path=path,
+                source_type=result.source.source_type,
+                row_count=len(data),
+                columns=columns,
+                data=data,
+                truncated=truncated,
+                query_executed=result.source.query,
+                execution_time_ms=round((time.time() - start_time) * 1000, 2),
+                cached=True,
+                cache_status=cached_result.status.value,
+                cache_age_seconds=round(cached_result.cache_age_seconds, 1) if cached_result.cache_age_seconds else None,
+                cache_last_refresh=cached_result.last_refresh.isoformat() if cached_result.last_refresh else None,
+                cache_next_refresh=cached_result.next_refresh.isoformat() if cached_result.next_refresh else None,
+                cache_message=cached_result.message,
+            )
+
+    # Not cached or bypassing cache - fetch directly
     result = await _service.resolve(moniker_str, caller)
 
-    # Execute the query using appropriate mock adapter
-    # In production, this would use real adapters
+    # Execute the query using the appropriate adapter from the registry
     data = []
     columns = []
 
     try:
-        if result.source.source_type == "oracle":
-            from moniker_data.adapters.oracle import execute_query
-            data = execute_query(result.source.query)
-        elif result.source.source_type == "snowflake":
-            from moniker_data.adapters.snowflake import MockSnowflakeAdapter
-            adapter = MockSnowflakeAdapter()
-            data = adapter.execute(result.source.query)
-        elif result.source.source_type == "rest":
-            from moniker_data.adapters.rest import MockRestAdapter
-            adapter = MockRestAdapter()
-            data = adapter.fetch(result.source.query or result.sub_path or "")
-        elif result.source.source_type == "excel":
-            from moniker_data.adapters.excel import MockExcelAdapter
-            adapter = MockExcelAdapter()
-            data = adapter.fetch(result.source.query or "")
-        elif result.source.source_type == "mssql":
-            from moniker_data.adapters.mssql import execute_query as mssql_execute_query
-            data = mssql_execute_query(result.source.query)
+        # Get the node with source binding to pass to adapter
+        binding_node = _service.catalog.get(result.binding_path)
+        if not binding_node or not binding_node.source_binding:
+            raise HTTPException(
+                status_code=500,
+                detail=f"No source binding found at {result.binding_path}"
+            )
+
+        binding = binding_node.source_binding
+
+        # Check if we have an adapter for this source type
+        if _adapter_registry and _adapter_registry.has(binding.source_type):
+            adapter = _adapter_registry.get(binding.source_type)
+            moniker = parse_moniker(moniker_str)
+            adapter_result = await adapter.fetch(moniker, binding, result.sub_path)
+            data = adapter_result.data if isinstance(adapter_result.data, list) else [adapter_result.data]
+            columns = adapter_result.metadata.get("columns", [])
+            if not columns and data and isinstance(data[0], dict):
+                columns = list(data[0].keys())
         else:
             raise HTTPException(
                 status_code=501,
-                detail=f"Fetch not implemented for source type: {result.source.source_type}"
+                detail=f"No adapter available for source type: {binding.source_type}. "
+                       f"Install the appropriate driver package."
             )
-    except ImportError:
+    except ImportError as e:
         raise HTTPException(
             status_code=501,
-            detail="Mock adapters not available. Install moniker-data package."
+            detail=f"Database driver not installed: {e}. "
+                   f"Install the appropriate driver package for {result.source.source_type}."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching {path}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error executing query: {e}"
         )
 
     # Apply limit and track truncation
     truncated = len(data) > limit
     data = data[:limit]
 
-    # Extract columns from first row
-    if data:
+    # Extract columns from first row if not already set
+    if not columns and data and isinstance(data[0], dict):
         columns = list(data[0].keys())
 
     execution_time = (time.time() - start_time) * 1000
@@ -1774,7 +1996,61 @@ async def fetch_data(
         truncated=truncated,
         query_executed=result.source.query,
         execution_time_ms=round(execution_time, 2),
+        cached=False,
     )
+
+
+# =============================================================================
+# CACHE STATUS ENDPOINTS
+# =============================================================================
+
+@app.get("/cache/status", tags=["Data Fetch"])
+async def cache_status():
+    """
+    Get status of all cached queries.
+
+    Shows:
+    - All registered cached queries
+    - Last refresh time and next scheduled refresh
+    - Cache age and row count
+    - Any errors from last refresh attempt
+    - Redis connection health
+    """
+    if not _cache_manager:
+        return {
+            "enabled": False,
+            "message": "Redis caching not configured or not connected",
+        }
+
+    return await _cache_manager.get_detailed_status()
+
+
+@app.post("/cache/refresh/{path:path}", tags=["Data Fetch"])
+async def trigger_cache_refresh(path: str):
+    """
+    Manually trigger a cache refresh for a specific path.
+
+    This is useful for forcing an immediate refresh outside
+    the normal schedule.
+    """
+    if not _cache_manager:
+        raise HTTPException(
+            status_code=503,
+            detail="Redis caching not configured or not connected",
+        )
+
+    if not _cache_manager.is_registered(path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Path '{path}' is not registered for caching",
+        )
+
+    success = await _cache_manager.trigger_refresh(path)
+
+    if success:
+        return {"status": "refreshed", "path": path}
+    else:
+        return {"status": "refresh_in_progress", "path": path}
 
 
 @app.get("/metadata/{path:path}", response_model=MetadataResponse, tags=["Data Fetch"])
@@ -2270,9 +2546,9 @@ _LANDING_HTML = """
                 <a href="/ui">Open Catalog Browser</a>
             </div>
             <div class="card">
-                <h2>SQL Catalog</h2>
-                <p>Browse discovered SQL statements, schemas, and table relationships.</p>
-                <a href="/sql/ui">SQL Catalog Browser</a>
+                <h2>Business Models</h2>
+                <p>Manage business models (measures, metrics, fields) that appear across monikers.</p>
+                <a href="/models/ui">Models Browser</a>
             </div>
         </div>
 
@@ -2296,6 +2572,11 @@ _LANDING_HTML = """
                 <h2>Domains</h2>
                 <p>List all configured data domains with governance info.</p>
                 <a href="/domains">Domains API</a>
+            </div>
+            <div class="card api">
+                <h2>Models</h2>
+                <p>List all business models with their moniker mappings.</p>
+                <a href="/models">Models API</a>
             </div>
             <div class="card api">
                 <h2>Catalog Paths</h2>
@@ -2510,6 +2791,58 @@ _UI_HTML = """
         /* Loading */
         .loading { text-align: center; padding: 40px; color: var(--c-gray); }
 
+        /* Business Models */
+        .models-list { display: flex; flex-direction: column; gap: 8px; }
+        .model-card {
+            background: var(--color-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .model-name {
+            font-weight: 700;
+            color: var(--c-navy);
+            font-size: 13px;
+        }
+        .model-unit {
+            background: var(--c-peacock);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .model-desc {
+            font-size: 12px;
+            color: var(--c-gray);
+            margin-bottom: 4px;
+        }
+        .model-formula {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+            background: rgba(0, 85, 135, 0.08);
+            padding: 4px 8px;
+            border-radius: 3px;
+            color: var(--c-peacock);
+            margin-bottom: 4px;
+        }
+        .model-link {
+            font-size: 11px;
+        }
+        .model-link a {
+            color: var(--c-peacock);
+            text-decoration: none;
+        }
+        .model-link a:hover {
+            text-decoration: underline;
+        }
+
         /* Search */
         .search-box {
             padding: 12px 16px;
@@ -2711,9 +3044,11 @@ _UI_HTML = """
             showDetails(node);
         }
 
-        function showDetails(node) {
+        async function showDetails(node) {
             const ownership = node.ownership || {};
-            const html = `
+
+            // Build base HTML first
+            let html = `
                 <div class="path-display">moniker://${node.path}</div>
 
                 <div class="detail-section">
@@ -2728,6 +3063,8 @@ _UI_HTML = """
                     ${detailRow('Has Binding', node.has_source_binding ? 'Yes' : 'No')}
                     ${detailRow('Type', node.source_type || '-')}
                 </div>
+
+                <div id="models-section"></div>
 
                 <div class="detail-section">
                     <h3>Ownership</h3>
@@ -2776,6 +3113,46 @@ _UI_HTML = """
                 </div>
             `;
             document.getElementById('details').innerHTML = html;
+
+            // Fetch and display linked business models asynchronously
+            loadModelsForMoniker(node.path);
+        }
+
+        async function loadModelsForMoniker(path) {
+            const modelsSection = document.getElementById('models-section');
+            try {
+                const res = await fetch('/models/for-moniker/' + encodeURIComponent(path));
+                if (!res.ok) return;
+
+                const data = await res.json();
+                if (!data.models || data.models.length === 0) {
+                    modelsSection.innerHTML = '';
+                    return;
+                }
+
+                const modelsHtml = data.models.map(m => `
+                    <div class="model-card">
+                        <div class="model-header">
+                            <span class="model-name">${m.display_name || m.path}</span>
+                            ${m.unit ? `<span class="model-unit">${m.unit}</span>` : ''}
+                        </div>
+                        ${m.description ? `<div class="model-desc">${m.description}</div>` : ''}
+                        ${m.formula ? `<div class="model-formula">${m.formula}</div>` : ''}
+                        ${m.documentation_url ? `<div class="model-link"><a href="${m.documentation_url}" target="_blank">Documentation</a></div>` : ''}
+                    </div>
+                `).join('');
+
+                modelsSection.innerHTML = `
+                    <div class="detail-section">
+                        <h3>Business Models (${data.count})</h3>
+                        <div class="models-list">
+                            ${modelsHtml}
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Failed to load models:', e);
+            }
         }
 
         function detailRow(label, value) {

@@ -38,6 +38,18 @@ cache:
   max_size: 10000
   default_ttl_seconds: 300  # 5 minutes
 
+# Redis configuration for query result caching
+# Used for expensive queries with cache config in source_binding
+redis:
+  enabled: false  # Enable to use Redis caching
+  host: "localhost"
+  port: 6379
+  db: 0
+  # password: ""  # Uncomment if Redis requires authentication
+  prefix: "moniker:cache:"  # Key prefix for cached queries
+  socket_timeout: 5.0
+  socket_connect_timeout: 5.0
+
 catalog:
   # Path to catalog definition file (copy sample_catalog.yaml to catalog.yaml)
   definition_file: "./catalog.yaml"

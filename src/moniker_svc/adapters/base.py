@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from ..catalog.types import SourceBinding, SourceType
@@ -129,6 +130,62 @@ class DataAdapter(ABC):
         Default returns True. Override for actual health checks.
         """
         return True
+
+    def resolve_query(
+        self,
+        config: dict[str, Any],
+        format_vars: dict[str, str] | None = None,
+        catalog_dir: Path | None = None,
+    ) -> str:
+        """
+        Resolve query from config - either inline or from file.
+
+        Checks for 'query_file' first, then 'query', then 'table'.
+        Applies format_vars to the query string.
+
+        Args:
+            config: Source binding config dictionary
+            format_vars: Variables to substitute in query (e.g., {path}, {moniker})
+            catalog_dir: Base directory for resolving relative query_file paths
+
+        Returns:
+            The resolved query string
+
+        Raises:
+            AdapterError: If no query source is found
+        """
+        format_vars = format_vars or {}
+
+        # Check for query_file first (external SQL file)
+        if config.get("query_file"):
+            query_path = Path(config["query_file"])
+            if catalog_dir and not query_path.is_absolute():
+                query_path = catalog_dir / query_path
+            if not query_path.exists():
+                raise AdapterError(f"Query file not found: {query_path}")
+            query = query_path.read_text()
+        elif config.get("query"):
+            query = config["query"]
+        elif config.get("table"):
+            table = config["table"]
+            # Apply format vars to table name if it has placeholders
+            if format_vars:
+                try:
+                    table = table.format(**format_vars)
+                except KeyError:
+                    pass  # Ignore missing placeholders in table name
+            return f"SELECT * FROM {table}"
+        else:
+            raise AdapterError("Either 'query', 'query_file', or 'table' required in config")
+
+        # Apply format vars to query
+        if format_vars:
+            try:
+                query = query.format(**format_vars)
+            except KeyError as e:
+                raise AdapterError(f"Missing format variable in query: {e}")
+
+        return query
 
 
 class InMemoryAdapter(DataAdapter):

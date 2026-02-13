@@ -11,7 +11,8 @@ import yaml
 from .registry import CatalogRegistry
 from .types import (
     AccessPolicy, CatalogNode, ColumnSchema, DataQuality, DataSchema,
-    Documentation, Freshness, NodeStatus, Ownership, SLA, SourceBinding, SourceType,
+    Documentation, Freshness, NodeStatus, Ownership, QueryCacheConfig, SLA,
+    SourceBinding, SourceType,
 )
 
 
@@ -99,11 +100,23 @@ class CatalogLoader:
                 logger.warning(f"Unknown source type '{source_type_str}' for {path}")
                 source_type = SourceType.STATIC
 
+            # Parse cache config if present
+            cache_config = None
+            if "cache" in sb_data:
+                cache_data = sb_data["cache"]
+                cache_config = QueryCacheConfig(
+                    enabled=cache_data.get("enabled", False),
+                    ttl_seconds=cache_data.get("ttl_seconds", 3600),
+                    refresh_interval_seconds=cache_data.get("refresh_interval_seconds", 600),
+                    refresh_on_startup=cache_data.get("refresh_on_startup", True),
+                )
+
             source_binding = SourceBinding(
                 source_type=source_type,
                 config=sb_data.get("config", {}),
                 schema=sb_data.get("schema"),
                 read_only=sb_data.get("read_only", True),
+                cache=cache_config,
             )
 
         # Parse tags

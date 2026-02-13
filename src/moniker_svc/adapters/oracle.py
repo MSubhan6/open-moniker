@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 from ..catalog.types import SourceBinding, SourceType
@@ -31,8 +32,18 @@ class OracleAdapter(DataAdapter):
         # Query options:
         table: Table or view name (can include {path} placeholder)
         query: Custom SQL query (can include {path}, {moniker} placeholders)
+        query_file: Path to external .sql file
         timeout: Query timeout in seconds
     """
+
+    def __init__(self, catalog_dir: Path | None = None):
+        """
+        Initialize adapter with optional catalog directory for query_file resolution.
+
+        Args:
+            catalog_dir: Base directory for resolving relative query_file paths
+        """
+        self._catalog_dir = catalog_dir
 
     @property
     def source_type(self) -> SourceType:
@@ -65,14 +76,9 @@ class OracleAdapter(DataAdapter):
             else:
                 raise AdapterError("Either 'dsn' or 'host/port/service_name' required")
 
-        # Build query
-        if config.get("query"):
-            query = config["query"].format(path=path_str, moniker=str(moniker))
-        elif config.get("table"):
-            table = config["table"].format(path=path_str)
-            query = f"SELECT * FROM {table}"
-        else:
-            raise AdapterError("Either 'query' or 'table' must be specified")
+        # Build query using resolve_query helper
+        format_vars = {"path": path_str, "moniker": str(moniker)}
+        query = self.resolve_query(config, format_vars, self._catalog_dir)
 
         # Add query params as filters
         if moniker.params:
