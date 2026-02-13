@@ -416,12 +416,83 @@
             cursor: pointer;
             font-family: var(--font-sans);
         }
+
+        /* New Request button */
+        .btn-new {
+            background: var(--c-green);
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: filter 0.15s;
+        }
+        .btn-new:hover { filter: brightness(0.9); }
+
+        /* Submit form dialog (wider) */
+        .dialog.wide { width: 560px; }
+        .dialog.wide h3 { margin-bottom: 16px; }
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .form-field { margin-bottom: 10px; }
+        .form-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--c-navy);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 3px;
+        }
+        .form-field input,
+        .form-field textarea,
+        .form-field select {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-sans);
+            font-size: 13px;
+        }
+        .form-field textarea { min-height: 60px; resize: vertical; }
+        .form-field input:focus,
+        .form-field textarea:focus,
+        .form-field select:focus {
+            outline: none;
+            border-color: var(--c-peacock);
+            box-shadow: 0 0 0 2px rgba(0,85,135,0.15);
+        }
+        .form-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--c-peacock);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 14px 0 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+        }
+        .form-field.full { grid-column: 1 / -1; }
+        .submit-error {
+            color: var(--c-red);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Moniker Review Queue</h1>
         <div class="header-nav">
+            <button class="btn-new" onclick="openSubmitForm()">+ New Request</button>
             <a href="/">Home</a>
             <a href="/config/ui">Catalog Config</a>
             <a href="/domains/ui">Domains</a>
@@ -473,6 +544,119 @@
             <div class="dialog-actions">
                 <button class="btn-cancel" onclick="closeDialog()">Cancel</button>
                 <button class="btn" id="dialogConfirmBtn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Request submission dialog -->
+    <div class="dialog-overlay" id="submitOverlay">
+        <div class="dialog wide">
+            <h3>Submit New Moniker Request</h3>
+            <div class="submit-error" id="submitError"></div>
+
+            <div class="form-section-title">Moniker</div>
+            <div class="form-grid-2">
+                <div class="form-field full">
+                    <label>Path *</label>
+                    <input type="text" id="sf_path" placeholder="e.g. market-data/bonds/treasury">
+                </div>
+                <div class="form-field">
+                    <label>Display Name</label>
+                    <input type="text" id="sf_display_name" placeholder="Treasury Bonds">
+                </div>
+                <div class="form-field">
+                    <label>Tags (comma-separated)</label>
+                    <input type="text" id="sf_tags" placeholder="bonds, govies, fixed-income">
+                </div>
+                <div class="form-field full">
+                    <label>Description</label>
+                    <textarea id="sf_description" placeholder="What data does this moniker represent?"></textarea>
+                </div>
+                <div class="form-field full">
+                    <label>Justification *</label>
+                    <textarea id="sf_justification" placeholder="Why is this moniker needed?"></textarea>
+                </div>
+            </div>
+
+            <div class="form-section-title">Requester</div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>Your Name *</label>
+                    <input type="text" id="sf_req_name" placeholder="Alice Smith">
+                </div>
+                <div class="form-field">
+                    <label>Email *</label>
+                    <input type="text" id="sf_req_email" placeholder="alice@firm.com">
+                </div>
+                <div class="form-field">
+                    <label>Team</label>
+                    <input type="text" id="sf_req_team" placeholder="Data Engineering">
+                </div>
+                <div class="form-field">
+                    <label>App ID</label>
+                    <input type="text" id="sf_req_app_id" placeholder="data-portal">
+                </div>
+            </div>
+
+            <div class="form-section-title">Proposed Ownership</div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>ADOP (System ID)</label>
+                    <input type="text" id="sf_adop" placeholder="jane@firm.com">
+                </div>
+                <div class="form-field">
+                    <label>ADOP Name</label>
+                    <input type="text" id="sf_adop_name" placeholder="Jane Doe">
+                </div>
+                <div class="form-field">
+                    <label>ADS (System ID)</label>
+                    <input type="text" id="sf_ads" placeholder="bob@firm.com">
+                </div>
+                <div class="form-field">
+                    <label>ADS Name</label>
+                    <input type="text" id="sf_ads_name" placeholder="Bob Smith">
+                </div>
+                <div class="form-field">
+                    <label>ADAL (System ID)</label>
+                    <input type="text" id="sf_adal" placeholder="carol@firm.com">
+                </div>
+                <div class="form-field">
+                    <label>ADAL Name</label>
+                    <input type="text" id="sf_adal_name" placeholder="Carol Williams">
+                </div>
+            </div>
+
+            <div class="form-section-title">Source Binding (Optional)</div>
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label>Source Type</label>
+                    <select id="sf_source_type">
+                        <option value="">-- None --</option>
+                        <option value="snowflake">Snowflake</option>
+                        <option value="oracle">Oracle</option>
+                        <option value="mssql">MS SQL</option>
+                        <option value="rest">REST API</option>
+                        <option value="static">Static Files</option>
+                        <option value="excel">Excel</option>
+                        <option value="bloomberg">Bloomberg</option>
+                        <option value="refinitiv">Refinitiv</option>
+                        <option value="opensearch">OpenSearch</option>
+                        <option value="composite">Composite</option>
+                        <option value="derived">Derived</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>&nbsp;</label>
+                </div>
+                <div class="form-field full">
+                    <label>Config (JSON)</label>
+                    <textarea id="sf_source_config" placeholder='{"account": "firm.us-east-1", "warehouse": "WH"}'></textarea>
+                </div>
+            </div>
+
+            <div class="dialog-actions" style="margin-top:16px">
+                <button class="btn-cancel" onclick="closeSubmitForm()">Cancel</button>
+                <button class="btn approve" onclick="submitNewRequest()">Submit Request</button>
             </div>
         </div>
     </div>
@@ -811,6 +995,105 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    // =========================================================================
+    // Submit form
+    // =========================================================================
+    function openSubmitForm() {
+        document.getElementById('submitOverlay').classList.add('active');
+        document.getElementById('submitError').style.display = 'none';
+        // Clear form
+        ['sf_path','sf_display_name','sf_description','sf_justification','sf_tags',
+         'sf_req_name','sf_req_email','sf_req_team','sf_req_app_id',
+         'sf_adop','sf_adop_name','sf_ads','sf_ads_name','sf_adal','sf_adal_name',
+         'sf_source_config'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('sf_source_type').value = '';
+    }
+
+    function closeSubmitForm() {
+        document.getElementById('submitOverlay').classList.remove('active');
+    }
+
+    async function submitNewRequest() {
+        const errEl = document.getElementById('submitError');
+        errEl.style.display = 'none';
+
+        const path = document.getElementById('sf_path').value.trim();
+        const reqName = document.getElementById('sf_req_name').value.trim();
+        const reqEmail = document.getElementById('sf_req_email').value.trim();
+        const justification = document.getElementById('sf_justification').value.trim();
+
+        if (!path) { errEl.textContent = 'Path is required'; errEl.style.display = 'block'; return; }
+        if (!reqName) { errEl.textContent = 'Your name is required'; errEl.style.display = 'block'; return; }
+        if (!reqEmail) { errEl.textContent = 'Email is required'; errEl.style.display = 'block'; return; }
+        if (!justification) { errEl.textContent = 'Justification is required'; errEl.style.display = 'block'; return; }
+
+        // Parse tags
+        const tagsRaw = document.getElementById('sf_tags').value.trim();
+        const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+        // Parse source config JSON
+        let sourceConfig = {};
+        const configRaw = document.getElementById('sf_source_config').value.trim();
+        if (configRaw) {
+            try {
+                sourceConfig = JSON.parse(configRaw);
+            } catch (e) {
+                errEl.textContent = 'Source config must be valid JSON';
+                errEl.style.display = 'block';
+                return;
+            }
+        }
+
+        const sourceType = document.getElementById('sf_source_type').value || null;
+
+        const body = {
+            path: path,
+            display_name: document.getElementById('sf_display_name').value.trim(),
+            description: document.getElementById('sf_description').value.trim(),
+            justification: justification,
+            requester: {
+                name: reqName,
+                email: reqEmail,
+                team: document.getElementById('sf_req_team').value.trim(),
+                app_id: document.getElementById('sf_req_app_id').value.trim(),
+            },
+            adop: document.getElementById('sf_adop').value.trim() || null,
+            adop_name: document.getElementById('sf_adop_name').value.trim() || null,
+            ads: document.getElementById('sf_ads').value.trim() || null,
+            ads_name: document.getElementById('sf_ads_name').value.trim() || null,
+            adal: document.getElementById('sf_adal').value.trim() || null,
+            adal_name: document.getElementById('sf_adal_name').value.trim() || null,
+            source_binding_type: sourceType,
+            source_binding_config: sourceType ? sourceConfig : {},
+            tags: tags,
+        };
+
+        try {
+            const resp = await fetch(API, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            });
+            if (!resp.ok) {
+                const err = await resp.json();
+                errEl.textContent = err.detail || 'Submission failed';
+                errEl.style.display = 'block';
+                return;
+            }
+            const result = await resp.json();
+            closeSubmitForm();
+            await loadRequests();
+            // Select the new request
+            selectedId = result.request_id;
+            const newReq = allRequests.find(r => r.request_id === result.request_id);
+            if (newReq) renderDetail(newReq);
+            renderList();
+        } catch (e) {
+            errEl.textContent = 'Network error: ' + e.message;
+            errEl.style.display = 'block';
+        }
     }
 
     // Initial load
