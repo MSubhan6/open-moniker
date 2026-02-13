@@ -24,6 +24,10 @@ class Operation(str, Enum):
     LIST = "list"
     DESCRIBE = "describe"
     LINEAGE = "lineage"
+    REQUEST_SUBMIT = "request_submit"
+    REQUEST_APPROVE = "request_approve"
+    REQUEST_REJECT = "request_reject"
+    REQUEST_COMMENT = "request_comment"
 
 
 @dataclass(frozen=True, slots=True)

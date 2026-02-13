@@ -1579,6 +1579,12 @@
 
                 ${renderDomainInfo(node.path, node.domain)}
 
+                ${node.status === 'pending_review' ? `
+                <div style="background:rgba(242,169,0,0.1);border:1px solid rgba(242,169,0,0.3);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+                    <strong style="color:#B87D00">Pending Review</strong> &mdash;
+                    <a href="/requests/ui" style="color:#005587;font-weight:700;text-decoration:none">View in Review Queue &rarr;</a>
+                </div>` : ''}
+
                 <!-- Basic Info -->
                 <div class="form-section">
                     <div class="section-header" onclick="toggleSection(this)">

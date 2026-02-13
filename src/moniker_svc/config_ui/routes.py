@@ -107,6 +107,9 @@ def _node_to_model(node: CatalogNode) -> CatalogNodeModel:
             adop=node.ownership.adop,
             ads=node.ownership.ads,
             adal=node.ownership.adal,
+            adop_name=node.ownership.adop_name,
+            ads_name=node.ownership.ads_name,
+            adal_name=node.ownership.adal_name,
             ui=node.ownership.ui,
         )
 
@@ -131,6 +134,7 @@ def _node_to_model(node: CatalogNode) -> CatalogNodeModel:
         tags=list(node.tags) if node.tags else [],
         metadata=node.metadata,
         is_leaf=node.is_leaf,
+        status=node.status.value if hasattr(node.status, 'value') else str(node.status),
     )
 
 
@@ -145,6 +149,9 @@ def _model_to_ownership(model: OwnershipModel | None) -> Ownership:
         adop=model.adop,
         ads=model.ads,
         adal=model.adal,
+        adop_name=model.adop_name,
+        ads_name=model.ads_name,
+        adal_name=model.adal_name,
         ui=model.ui,
     )
 
@@ -305,10 +312,16 @@ async def get_node(path: str):
             support_channel_source=resolved.support_channel_source,
             adop=resolved.adop,
             adop_source=resolved.adop_source,
+            adop_name=resolved.adop_name,
+            adop_name_source=resolved.adop_name_source,
             ads=resolved.ads,
             ads_source=resolved.ads_source,
+            ads_name=resolved.ads_name,
+            ads_name_source=resolved.ads_name_source,
             adal=resolved.adal,
             adal_source=resolved.adal_source,
+            adal_name=resolved.adal_name,
+            adal_name_source=resolved.adal_name_source,
             ui=resolved.ui,
             ui_source=resolved.ui_source,
         ),

@@ -55,6 +55,11 @@ class Ownership:
     ads: str | None = None    # Accountable Data Steward - day-to-day data quality and standards
     adal: str | None = None   # Accountable Data Access Lead - controls access and permissions
 
+    # Human-readable names for governance roles
+    adop_name: str | None = None
+    ads_name: str | None = None
+    adal_name: str | None = None
+
     # UI link - URL to a custom UI/dashboard for this node
     ui: str | None = None
 
@@ -70,6 +75,9 @@ class Ownership:
             adop=self.adop or parent.adop,
             ads=self.ads or parent.ads,
             adal=self.adal or parent.adal,
+            adop_name=self.adop_name or parent.adop_name,
+            ads_name=self.ads_name or parent.ads_name,
+            adal_name=self.adal_name or parent.adal_name,
             ui=self.ui or parent.ui,
         )
 
@@ -362,12 +370,18 @@ class ResolvedOwnership:
     # Formal governance roles with provenance
     adop: str | None = None
     adop_source: str | None = None
+    adop_name: str | None = None
+    adop_name_source: str | None = None
 
     ads: str | None = None
     ads_source: str | None = None
+    ads_name: str | None = None
+    ads_name_source: str | None = None
 
     adal: str | None = None
     adal_source: str | None = None
+    adal_name: str | None = None
+    adal_name_source: str | None = None
 
     ui: str | None = None
     ui_source: str | None = None
@@ -382,6 +396,9 @@ class ResolvedOwnership:
             adop=self.adop,
             ads=self.ads,
             adal=self.adal,
+            adop_name=self.adop_name,
+            ads_name=self.ads_name,
+            adal_name=self.adal_name,
             ui=self.ui,
         )
 
@@ -389,9 +406,9 @@ class ResolvedOwnership:
     def governance_roles(self) -> dict[str, dict[str, str | None]]:
         """Get governance roles with their provenance as a dictionary."""
         return {
-            "adop": {"value": self.adop, "defined_at": self.adop_source},
-            "ads": {"value": self.ads, "defined_at": self.ads_source},
-            "adal": {"value": self.adal, "defined_at": self.adal_source},
+            "adop": {"value": self.adop, "name": self.adop_name, "defined_at": self.adop_source},
+            "ads": {"value": self.ads, "name": self.ads_name, "defined_at": self.ads_source},
+            "adal": {"value": self.adal, "name": self.adal_name, "defined_at": self.adal_source},
         }
 
 

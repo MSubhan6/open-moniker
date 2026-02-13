@@ -97,6 +97,13 @@ class ModelsConfig:
 
 
 @dataclass
+class RequestsConfig:
+    """Moniker request & approval workflow configuration."""
+    enabled: bool = True
+    definition_file: str | None = None  # Path to requests.yaml
+
+
+@dataclass
 class Config:
     """Main configuration container."""
     server: ServerConfig = field(default_factory=ServerConfig)
@@ -108,6 +115,7 @@ class Config:
     config_ui: ConfigUIConfig = field(default_factory=ConfigUIConfig)
     deprecation: DeprecationConfig = field(default_factory=DeprecationConfig)
     models: ModelsConfig = field(default_factory=ModelsConfig)
+    requests: RequestsConfig = field(default_factory=RequestsConfig)
 
     @classmethod
     def from_dict(cls, data: dict) -> Config:
@@ -123,6 +131,7 @@ class Config:
             config_ui=ConfigUIConfig(**data.get("config_ui", {})),
             deprecation=DeprecationConfig(**data.get("deprecation", {})),
             models=ModelsConfig(**data.get("models", {})),
+            requests=RequestsConfig(**data.get("requests", {})),
         )
 
     @classmethod

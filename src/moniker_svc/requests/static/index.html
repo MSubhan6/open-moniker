@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moniker Review Queue</title>
+    <style>
+        /* Corporate Design Tokens */
+        :root {
+            --font-sans: Arial, Helvetica, sans-serif;
+            --c-navy: #022D5E;
+            --c-gray: #53565A;
+            --c-peacock: #005587;
+            --c-green: #009639;
+            --c-red: #D0002B;
+            --c-yellow: #F2A900;
+            --c-wine: #6D2077;
+            --c-olive: #789D4A;
+            --color-bg: #f8f9fa;
+            --color-surface: #ffffff;
+            --color-text: #111111;
+            --border: rgba(83, 86, 90, 0.25);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--color-bg);
+            color: var(--color-text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--c-navy);
+            padding: 16px 24px;
+            border-bottom: 3px solid var(--c-peacock);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 20px; font-weight: 700; color: white; }
+        .header-nav a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 13px;
+            margin-left: 16px;
+        }
+        .header-nav a:hover { color: white; }
+
+        /* Stats bar */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 12px 24px;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--color-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+        .stat-value { font-size: 20px; font-weight: 700; color: var(--c-navy); }
+        .stat-label { font-size: 11px; color: var(--c-gray); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card.pending .stat-value { color: var(--c-yellow); }
+        .stat-card.approved .stat-value { color: var(--c-green); }
+        .stat-card.rejected .stat-value { color: var(--c-red); }
+
+        /* Main layout */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Left panel - request list */
+        .list-panel {
+            width: 400px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--color-surface);
+        }
+
+        /* Filter tabs */
+        .filter-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 0 8px;
+        }
+        .filter-tab {
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--c-gray);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-family: var(--font-sans);
+        }
+        .filter-tab:hover { color: var(--c-navy); }
+        .filter-tab.active {
+            color: var(--c-peacock);
+            border-bottom-color: var(--c-peacock);
+        }
+        .filter-tab .count {
+            font-size: 10px;
+            background: var(--color-bg);
+            border-radius: 10px;
+            padding: 1px 6px;
+            margin-left: 4px;
+        }
+
+        /* Request list items */
+        .request-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .request-item {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .request-item:hover { background: rgba(0, 85, 135, 0.04); }
+        .request-item.selected {
+            border-color: var(--c-peacock);
+            background: rgba(0, 85, 135, 0.06);
+        }
+        .request-item .path {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--c-navy);
+            margin-bottom: 4px;
+        }
+        .request-item .meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--c-gray);
+        }
+        .request-item .requester { font-weight: 700; }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge.pending_review { background: rgba(242, 169, 0, 0.15); color: #B87D00; }
+        .badge.approved { background: rgba(0, 150, 57, 0.15); color: var(--c-green); }
+        .badge.rejected { background: rgba(208, 0, 43, 0.15); color: var(--c-red); }
+        .badge.draft { background: rgba(83, 86, 90, 0.15); color: var(--c-gray); }
+        .badge.active { background: rgba(0, 150, 57, 0.25); color: #006B25; }
+        .badge.top_level {
+            background: rgba(109, 32, 119, 0.12);
+            color: var(--c-wine);
+            margin-left: 4px;
+        }
+
+        /* Right panel - detail */
+        .detail-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .detail-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--c-gray);
+            font-size: 14px;
+        }
+
+        /* Detail sections */
+        .detail-header {
+            margin-bottom: 24px;
+        }
+        .detail-header .path-display {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            background: var(--c-navy);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 6px;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+        .detail-header .title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--c-navy);
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h3 {
+            font-size: 11px;
+            color: var(--c-navy);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+        }
+        .field-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(83, 86, 90, 0.1);
+        }
+        .field-label { color: var(--c-gray); }
+        .field-value { color: var(--c-navy); font-weight: 700; max-width: 60%; text-align: right; word-break: break-word; }
+
+        /* Ownership table */
+        .ownership-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .ownership-table th {
+            background: var(--c-navy);
+            color: white;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .ownership-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .ownership-table tr:hover { background: rgba(0, 85, 135, 0.04); }
+
+        /* Elevated review banner */
+        .elevated-banner {
+            background: rgba(109, 32, 119, 0.08);
+            border: 1px solid rgba(109, 32, 119, 0.25);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--c-wine);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        /* Source binding */
+        .source-badge {
+            display: inline-block;
+            background: rgba(0, 150, 57, 0.12);
+            color: var(--c-green);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .config-block {
+            background: var(--color-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            margin-top: 8px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Action buttons */
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: filter 0.15s;
+        }
+        .btn:hover { filter: brightness(0.9); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.approve { background: var(--c-green); color: white; }
+        .btn.reject { background: var(--c-red); color: white; }
+        .btn.changes { background: var(--c-yellow); color: #333; }
+
+        /* Comment thread */
+        .comment-thread { margin-top: 8px; }
+        .comment-item {
+            padding: 10px 12px;
+            background: var(--color-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 11px;
+            color: var(--c-gray);
+        }
+        .comment-author { font-weight: 700; color: var(--c-navy); }
+        .comment-action {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+        .comment-action.approve { background: rgba(0,150,57,0.15); color: var(--c-green); }
+        .comment-action.reject { background: rgba(208,0,43,0.15); color: var(--c-red); }
+        .comment-action.comment { background: rgba(0,85,135,0.1); color: var(--c-peacock); }
+        .comment-action.request_changes { background: rgba(242,169,0,0.15); color: #B87D00; }
+
+        .comment-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .comment-form textarea {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            resize: vertical;
+            min-height: 40px;
+        }
+        .comment-form button {
+            align-self: flex-end;
+            padding: 8px 16px;
+            background: var(--c-peacock);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: var(--font-sans);
+        }
+
+        /* Dialog overlay */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .dialog-overlay.active { display: flex; }
+        .dialog {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            width: 400px;
+            max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .dialog h3 {
+            font-size: 16px;
+            color: var(--c-navy);
+            margin-bottom: 12px;
+        }
+        .dialog textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            min-height: 80px;
+            margin-bottom: 12px;
+        }
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .dialog .btn-cancel {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: white;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: var(--font-sans);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Moniker Review Queue</h1>
+        <div class="header-nav">
+            <a href="/">Home</a>
+            <a href="/config/ui">Catalog Config</a>
+            <a href="/domains/ui">Domains</a>
+            <a href="/docs">API Docs</a>
+        </div>
+    </div>
+
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-card pending">
+            <div><div class="stat-value" id="statPending">-</div><div class="stat-label">Pending</div></div>
+        </div>
+        <div class="stat-card approved">
+            <div><div class="stat-value" id="statApproved">-</div><div class="stat-label">Approved</div></div>
+        </div>
+        <div class="stat-card rejected">
+            <div><div class="stat-value" id="statRejected">-</div><div class="stat-label">Rejected</div></div>
+        </div>
+        <div class="stat-card">
+            <div><div class="stat-value" id="statTotal">-</div><div class="stat-label">Total</div></div>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Left panel: request list -->
+        <div class="list-panel">
+            <div class="filter-tabs" id="filterTabs">
+                <button class="filter-tab active" data-filter="all">All <span class="count" id="countAll"></span></button>
+                <button class="filter-tab" data-filter="pending_review">Pending <span class="count" id="countPending"></span></button>
+                <button class="filter-tab" data-filter="approved">Approved <span class="count" id="countApproved"></span></button>
+                <button class="filter-tab" data-filter="draft">Draft <span class="count" id="countDraft"></span></button>
+                <button class="filter-tab" data-filter="rejected">Rejected <span class="count" id="countRejected"></span></button>
+            </div>
+            <div class="request-list" id="requestList">
+                <div style="padding:40px;text-align:center;color:var(--c-gray)">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Right panel: detail -->
+        <div class="detail-panel" id="detailPanel">
+            <div class="detail-empty">Select a request to view details</div>
+        </div>
+    </div>
+
+    <!-- Approve/Reject dialog -->
+    <div class="dialog-overlay" id="dialogOverlay">
+        <div class="dialog">
+            <h3 id="dialogTitle">Action</h3>
+            <textarea id="dialogReason" placeholder="Enter reason or comment..."></textarea>
+            <div class="dialog-actions">
+                <button class="btn-cancel" onclick="closeDialog()">Cancel</button>
+                <button class="btn" id="dialogConfirmBtn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API = '/requests';
+    let allRequests = [];
+    let selectedId = null;
+    let currentFilter = 'all';
+    let pendingAction = null;
+
+    // =========================================================================
+    // Data loading
+    // =========================================================================
+    async function loadRequests() {
+        try {
+            const resp = await fetch(API);
+            const data = await resp.json();
+            allRequests = data.requests || [];
+            updateStats(data.by_status || {});
+            renderList();
+            if (selectedId) {
+                const sel = allRequests.find(r => r.request_id === selectedId);
+                if (sel) renderDetail(sel);
+            }
+        } catch (e) {
+            console.error('Failed to load requests:', e);
+        }
+    }
+
+    function updateStats(byStatus) {
+        document.getElementById('statPending').textContent = byStatus.pending_review || 0;
+        document.getElementById('statApproved').textContent = byStatus.approved || 0;
+        document.getElementById('statRejected').textContent = byStatus.rejected || 0;
+        document.getElementById('statTotal').textContent = byStatus.total || 0;
+
+        document.getElementById('countAll').textContent = byStatus.total || 0;
+        document.getElementById('countPending').textContent = byStatus.pending_review || 0;
+        document.getElementById('countApproved').textContent = byStatus.approved || 0;
+        document.getElementById('countDraft').textContent = byStatus.draft || 0;
+        document.getElementById('countRejected').textContent = byStatus.rejected || 0;
+    }
+
+    // =========================================================================
+    // Rendering
+    // =========================================================================
+    function renderList() {
+        const list = document.getElementById('requestList');
+        const filtered = currentFilter === 'all'
+            ? allRequests
+            : allRequests.filter(r => r.status === currentFilter);
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--c-gray)">No requests</div>';
+            return;
+        }
+
+        list.innerHTML = filtered.map(r => {
+            const name = r.requester ? r.requester.name : 'Unknown';
+            const time = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+            const isTopLevel = r.domain_level === 'top_level';
+            return `
+                <div class="request-item ${r.request_id === selectedId ? 'selected' : ''}"
+                     onclick="selectRequest('${r.request_id}')">
+                    <div class="path">${esc(r.path)}</div>
+                    <div class="meta">
+                        <span class="requester">${esc(name)}</span>
+                        <span>
+                            <span class="badge ${r.status}">${r.status.replace('_',' ')}</span>
+                            ${isTopLevel ? '<span class="badge top_level">TOP-LEVEL</span>' : ''}
+                        </span>
+                    </div>
+                    <div class="meta" style="margin-top:2px">
+                        <span>${time}</span>
+                        <span style="font-size:10px;color:var(--c-gray)">${r.request_id}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderDetail(req) {
+        const panel = document.getElementById('detailPanel');
+        const isPending = req.status === 'pending_review';
+        const isTopLevel = req.domain_level === 'top_level';
+
+        let html = '';
+
+        // Elevated review banner
+        if (isTopLevel) {
+            html += '<div class="elevated-banner">TOP-LEVEL DOMAIN REQUEST &mdash; Requires elevated governance approval</div>';
+        }
+
+        // Header
+        html += `
+            <div class="detail-header">
+                <div class="path-display">${esc(req.path)}</div>
+                <div class="title">${esc(req.display_name || req.path)}</div>
+                <div style="margin-top:4px">
+                    <span class="badge ${req.status}">${req.status.replace('_',' ')}</span>
+                    ${isTopLevel ? '<span class="badge top_level">TOP-LEVEL</span>' : ''}
+                </div>
+            </div>
+        `;
+
+        // Action buttons (only if pending)
+        if (isPending) {
+            html += `
+                <div class="actions">
+                    <button class="btn approve" onclick="doAction('approve')">Approve</button>
+                    <button class="btn reject" onclick="doAction('reject')">Reject</button>
+                    <button class="btn changes" onclick="doAction('request_changes')">Request Changes</button>
+                </div>
+            `;
+        }
+
+        // Requester section
+        if (req.requester) {
+            html += `
+                <div class="section">
+                    <h3>Requester</h3>
+                    <div class="field-row"><span class="field-label">Name</span><span class="field-value">${esc(req.requester.name)}</span></div>
+                    <div class="field-row"><span class="field-label">Email</span><span class="field-value">${esc(req.requester.email)}</span></div>
+                    <div class="field-row"><span class="field-label">Team</span><span class="field-value">${esc(req.requester.team || '-')}</span></div>
+                    <div class="field-row"><span class="field-label">App ID</span><span class="field-value">${esc(req.requester.app_id || '-')}</span></div>
+                </div>
+            `;
+        }
+
+        // Justification
+        if (req.justification) {
+            html += `
+                <div class="section">
+                    <h3>Justification</h3>
+                    <div style="font-size:13px;padding:8px 0">${esc(req.justification)}</div>
+                </div>
+            `;
+        }
+
+        // Ownership table
+        html += `
+            <div class="section">
+                <h3>Proposed Ownership</h3>
+                <table class="ownership-table">
+                    <thead><tr><th>Role</th><th>System ID</th><th>Name</th></tr></thead>
+                    <tbody>
+                        <tr><td>ADOP</td><td>${esc(req.adop || '-')}</td><td>${esc(req.adop_name || '-')}</td></tr>
+                        <tr><td>ADS</td><td>${esc(req.ads || '-')}</td><td>${esc(req.ads_name || '-')}</td></tr>
+                        <tr><td>ADAL</td><td>${esc(req.adal || '-')}</td><td>${esc(req.adal_name || '-')}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Source binding
+        if (req.source_binding_type) {
+            html += `
+                <div class="section">
+                    <h3>Source Binding</h3>
+                    <span class="source-badge">${esc(req.source_binding_type)}</span>
+                    ${req.source_binding_config && Object.keys(req.source_binding_config).length > 0
+                        ? '<div class="config-block">' + esc(JSON.stringify(req.source_binding_config, null, 2)) + '</div>'
+                        : ''}
+                </div>
+            `;
+        }
+
+        // Tags
+        if (req.tags && req.tags.length > 0) {
+            html += `
+                <div class="section">
+                    <h3>Tags</h3>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                        ${req.tags.map(t => `<span class="badge" style="background:var(--color-bg);color:var(--c-gray)">${esc(t)}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Metadata
+        html += `
+            <div class="section">
+                <h3>Metadata</h3>
+                <div class="field-row"><span class="field-label">Request ID</span><span class="field-value">${esc(req.request_id)}</span></div>
+                <div class="field-row"><span class="field-label">Created</span><span class="field-value">${req.created_at ? new Date(req.created_at).toLocaleString() : '-'}</span></div>
+                <div class="field-row"><span class="field-label">Updated</span><span class="field-value">${req.updated_at ? new Date(req.updated_at).toLocaleString() : '-'}</span></div>
+                ${req.reviewed_by ? `<div class="field-row"><span class="field-label">Reviewed By</span><span class="field-value">${esc(req.reviewed_by)}</span></div>` : ''}
+                ${req.rejection_reason ? `<div class="field-row"><span class="field-label">Rejection Reason</span><span class="field-value" style="color:var(--c-red)">${esc(req.rejection_reason)}</span></div>` : ''}
+            </div>
+        `;
+
+        // Comments thread
+        html += `
+            <div class="section">
+                <h3>Comments</h3>
+                <div class="comment-thread" id="commentThread">
+                    ${(req.comments || []).map(c => `
+                        <div class="comment-item">
+                            <div class="comment-header">
+                                <span><span class="comment-author">${esc(c.author_name || c.author)}</span></span>
+                                <span>
+                                    <span class="comment-action ${c.action}">${c.action.replace('_',' ')}</span>
+                                    ${c.timestamp ? new Date(c.timestamp).toLocaleString() : ''}
+                                </span>
+                            </div>
+                            <div>${esc(c.content)}</div>
+                        </div>
+                    `).join('') || '<div style="color:var(--c-gray);font-size:13px;padding:8px 0">No comments yet</div>'}
+                </div>
+                <div class="comment-form">
+                    <textarea id="commentInput" placeholder="Add a comment..."></textarea>
+                    <button onclick="submitComment()">Comment</button>
+                </div>
+            </div>
+        `;
+
+        // Audit link
+        html += `
+            <div class="section">
+                <h3>Audit</h3>
+                <a href="/catalog/${encodeURIComponent(req.path)}/audit" target="_blank"
+                   style="color:var(--c-peacock);font-size:13px;font-weight:700;text-decoration:none">
+                    View Audit Trail &rarr;
+                </a>
+            </div>
+        `;
+
+        panel.innerHTML = html;
+    }
+
+    // =========================================================================
+    // Interactions
+    // =========================================================================
+    function selectRequest(id) {
+        selectedId = id;
+        const req = allRequests.find(r => r.request_id === id);
+        if (req) renderDetail(req);
+        renderList();
+    }
+
+    // Filter tabs
+    document.getElementById('filterTabs').addEventListener('click', e => {
+        const tab = e.target.closest('.filter-tab');
+        if (!tab) return;
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentFilter = tab.dataset.filter;
+        renderList();
+    });
+
+    // Action dialog
+    function doAction(action) {
+        pendingAction = action;
+        const titleMap = {
+            approve: 'Approve Request',
+            reject: 'Reject Request',
+            request_changes: 'Request Changes',
+        };
+        document.getElementById('dialogTitle').textContent = titleMap[action] || 'Action';
+        document.getElementById('dialogReason').value = '';
+        document.getElementById('dialogReason').placeholder = action === 'reject'
+            ? 'Rejection reason (required)...'
+            : 'Comment (optional)...';
+
+        const btn = document.getElementById('dialogConfirmBtn');
+        btn.textContent = action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Submit';
+        btn.className = 'btn ' + (action === 'approve' ? 'approve' : action === 'reject' ? 'reject' : 'changes');
+
+        document.getElementById('dialogOverlay').classList.add('active');
+    }
+
+    function closeDialog() {
+        document.getElementById('dialogOverlay').classList.remove('active');
+        pendingAction = null;
+    }
+
+    async function confirmAction() {
+        if (!selectedId || !pendingAction) return;
+        const reason = document.getElementById('dialogReason').value.trim();
+
+        if (pendingAction === 'reject' && !reason) {
+            alert('Please provide a rejection reason.');
+            return;
+        }
+
+        const endpoint = pendingAction === 'request_changes'
+            ? `${API}/${selectedId}/comment`
+            : `${API}/${selectedId}/${pendingAction}`;
+
+        const body = pendingAction === 'request_changes'
+            ? { author: 'reviewer', author_name: 'Reviewer', content: reason }
+            : { actor: 'reviewer', actor_name: 'Reviewer', reason: reason };
+
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            });
+            if (!resp.ok) {
+                const err = await resp.json();
+                alert(err.detail || 'Action failed');
+            }
+        } catch (e) {
+            console.error('Action failed:', e);
+        }
+
+        closeDialog();
+        await loadRequests();
+    }
+
+    async function submitComment() {
+        if (!selectedId) return;
+        const input = document.getElementById('commentInput');
+        const content = input.value.trim();
+        if (!content) return;
+
+        try {
+            await fetch(`${API}/${selectedId}/comment`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ author: 'reviewer', author_name: 'Reviewer', content }),
+            });
+            input.value = '';
+            await loadRequests();
+        } catch (e) {
+            console.error('Comment failed:', e);
+        }
+    }
+
+    // =========================================================================
+    // Utilities
+    // =========================================================================
+    function esc(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Initial load
+    loadRequests();
+    // Auto-refresh every 15 seconds
+    setInterval(loadRequests, 15000);
+    </script>
+</body>
+</html>

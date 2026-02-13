@@ -86,6 +86,10 @@ class CatalogLoader:
                 adop=own_data.get("adop"),
                 ads=own_data.get("ads"),
                 adal=own_data.get("adal"),
+                # Human-readable names for governance roles
+                adop_name=own_data.get("adop_name"),
+                ads_name=own_data.get("ads_name"),
+                adal_name=own_data.get("adal_name"),
             )
 
         # Parse source binding

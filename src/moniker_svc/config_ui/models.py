@@ -19,6 +19,9 @@ class OwnershipModel(BaseModel):
     adop: str | None = None
     ads: str | None = None
     adal: str | None = None
+    adop_name: str | None = None
+    ads_name: str | None = None
+    adal_name: str | None = None
     ui: str | None = None
 
 
@@ -32,10 +35,16 @@ class ResolvedOwnershipModel(BaseModel):
     support_channel_source: str | None = None
     adop: str | None = None
     adop_source: str | None = None
+    adop_name: str | None = None
+    adop_name_source: str | None = None
     ads: str | None = None
     ads_source: str | None = None
+    ads_name: str | None = None
+    ads_name_source: str | None = None
     adal: str | None = None
     adal_source: str | None = None
+    adal_name: str | None = None
+    adal_name_source: str | None = None
     ui: str | None = None
     ui_source: str | None = None
 
@@ -182,6 +191,7 @@ class CatalogNodeModel(BaseModel):
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     is_leaf: bool = False
+    status: str = "active"
 
     model_config = {"populate_by_name": True}
 

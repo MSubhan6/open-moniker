@@ -155,10 +155,16 @@ class CatalogRegistry:
             # Formal governance roles
             adop: str | None = None
             adop_source: str | None = None
+            adop_name: str | None = None
+            adop_name_source: str | None = None
             ads: str | None = None
             ads_source: str | None = None
+            ads_name: str | None = None
+            ads_name_source: str | None = None
             adal: str | None = None
             adal_source: str | None = None
+            adal_name: str | None = None
+            adal_name_source: str | None = None
             ui: str | None = None
             ui_source: str | None = None
 
@@ -186,6 +192,16 @@ class CatalogRegistry:
                     if node.ownership.adal:
                         adal = node.ownership.adal
                         adal_source = p
+                    # Human-readable names for governance roles
+                    if node.ownership.adop_name:
+                        adop_name = node.ownership.adop_name
+                        adop_name_source = p
+                    if node.ownership.ads_name:
+                        ads_name = node.ownership.ads_name
+                        ads_name_source = p
+                    if node.ownership.adal_name:
+                        adal_name = node.ownership.adal_name
+                        adal_name_source = p
                     if node.ownership.ui:
                         ui = node.ownership.ui
                         ui_source = p
@@ -215,10 +231,16 @@ class CatalogRegistry:
                 support_channel_source=support_channel_source,
                 adop=adop,
                 adop_source=adop_source,
+                adop_name=adop_name,
+                adop_name_source=adop_name_source,
                 ads=ads,
                 ads_source=ads_source,
+                ads_name=ads_name,
+                ads_name_source=ads_name_source,
                 adal=adal,
                 adal_source=adal_source,
+                adal_name=adal_name,
+                adal_name_source=adal_name_source,
                 ui=ui,
                 ui_source=ui_source,
             )

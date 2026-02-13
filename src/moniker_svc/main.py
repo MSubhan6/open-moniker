@@ -52,6 +52,8 @@ from .domains import routes as domain_routes
 from .domains import DomainRegistry, load_domains_from_yaml
 from .models import routes as model_routes
 from .models import ModelRegistry, load_models_from_yaml
+from .requests import routes as request_routes
+from .requests import RequestRegistry, load_requests_from_yaml
 
 
 logger = logging.getLogger(__name__)
@@ -61,6 +63,9 @@ _domain_registry: DomainRegistry | None = None
 
 # Model registry - global singleton
 _model_registry: ModelRegistry | None = None
+
+# Request registry - global singleton
+_request_registry: RequestRegistry | None = None
 
 
 # Response models
@@ -981,6 +986,27 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Business models disabled")
 
+    # Initialize Request & Approval Workflow
+    global _request_registry
+    _request_registry = RequestRegistry()
+    if config.requests.enabled:
+        requests_yaml_path = config.requests.definition_file or os.environ.get("REQUESTS_CONFIG", "requests.yaml")
+        if Path(requests_yaml_path).exists():
+            loaded_reqs = load_requests_from_yaml(requests_yaml_path, _request_registry)
+            logger.info(f"Loaded {len(loaded_reqs)} requests from {requests_yaml_path}")
+        else:
+            logger.info(f"No requests config found at {requests_yaml_path}, starting with empty registry")
+
+        request_routes.configure(
+            request_registry=_request_registry,
+            catalog_registry=catalog,
+            domain_registry=_domain_registry,
+            yaml_path=requests_yaml_path,
+        )
+        logger.info("Request & approval workflow enabled")
+    else:
+        logger.info("Request & approval workflow disabled")
+
     # Initialize Redis cache and query refresh manager
     global _redis_cache, _cache_manager, _cache_refresh_task
 
@@ -1119,6 +1145,7 @@ Resolves monikers (semantic data paths) to source connection info.
         {"name": "Catalog", "description": "Browse and explore the moniker catalog"},
         {"name": "Domains", "description": "Domain governance and configuration"},
         {"name": "Models", "description": "Business models/measures that appear across monikers"},
+        {"name": "Requests", "description": "Moniker request submission and approval workflow"},
         {"name": "Config", "description": "Catalog configuration management"},
         {"name": "Telemetry", "description": "Access tracking and reporting"},
         {"name": "Health", "description": "Service health and diagnostics"},
@@ -1134,6 +1161,7 @@ if _static_dir.exists():
 app.include_router(config_ui_routes.router)
 app.include_router(domain_routes.router)
 app.include_router(model_routes.router)
+app.include_router(request_routes.router)
 
 
 @app.exception_handler(MonikerParseError)
@@ -1286,10 +1314,16 @@ async def resolve_moniker(
             # Formal governance roles
             "adop": result.ownership.adop,
             "adop_source": result.ownership.adop_source,
+            "adop_name": result.ownership.adop_name,
+            "adop_name_source": result.ownership.adop_name_source,
             "ads": result.ownership.ads,
             "ads_source": result.ownership.ads_source,
+            "ads_name": result.ownership.ads_name,
+            "ads_name_source": result.ownership.ads_name_source,
             "adal": result.ownership.adal,
             "adal_source": result.ownership.adal_source,
+            "adal_name": result.ownership.adal_name,
+            "adal_name_source": result.ownership.adal_name_source,
         },
         binding_path=result.binding_path,
         sub_path=result.sub_path,
@@ -1462,10 +1496,16 @@ async def describe_moniker(
             # Formal governance roles
             "adop": result.ownership.adop,
             "adop_source": result.ownership.adop_source,
+            "adop_name": result.ownership.adop_name,
+            "adop_name_source": result.ownership.adop_name_source,
             "ads": result.ownership.ads,
             "ads_source": result.ownership.ads_source,
+            "ads_name": result.ownership.ads_name,
+            "ads_name_source": result.ownership.ads_name_source,
             "adal": result.ownership.adal,
             "adal_source": result.ownership.adal_source,
+            "adal_name": result.ownership.adal_name,
+            "adal_name_source": result.ownership.adal_name_source,
         },
         has_source_binding=result.has_source_binding,
         source_type=result.source_type,
@@ -2549,6 +2589,11 @@ _LANDING_HTML = """
                 <h2>Business Models</h2>
                 <p>Manage business models (measures, metrics, fields) that appear across monikers.</p>
                 <a href="/models/ui">Models Browser</a>
+            </div>
+            <div class="card">
+                <h2>Review Queue</h2>
+                <p>Review and approve moniker requests. Manage the governance approval workflow.</p>
+                <a href="/requests/ui">Open Review Queue</a>
             </div>
         </div>
 
