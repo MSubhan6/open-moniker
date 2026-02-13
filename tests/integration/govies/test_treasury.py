@@ -1,4 +1,4 @@
-"""Integration tests for govies.treasury domain.
+"""Integration tests for fixed_income/govies/treasury domain.
 
 Tests resolution and data access for US Treasury securities.
 """
@@ -15,18 +15,18 @@ class TestTreasuryResolution:
     async def test_resolve_treasury(self, service, caller):
         """Treasury moniker should resolve to Snowflake source."""
         result = await service.resolve(
-            "moniker://govies.treasury/US/10Y/ALL",
+            "moniker://fixed_income/govies/treasury/US/10Y/ALL",
             caller
         )
 
         assert result.source.source_type == "snowflake"
-        assert result.binding_path == "govies.treasury"
+        assert result.binding_path == "fixed_income/govies/treasury"
 
     @pytest.mark.asyncio
     async def test_ownership_and_governance(self, service, caller, catalog_registry):
         """Govies should have proper governance roles at domain level."""
         result = await service.resolve(
-            "moniker://govies.treasury/US/10Y/ALL",
+            "moniker://fixed_income/govies/treasury/US/10Y/ALL",
             caller
         )
 

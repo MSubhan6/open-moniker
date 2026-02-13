@@ -29,7 +29,7 @@ risk.analytics/dv01:
       column_name: DV01
     - moniker_pattern: "portfolios/*/risk/*"
       column_name: DV01
-    - moniker_pattern: "fixed_income.govies/*"
+    - moniker_pattern: "fixed_income/govies/*"
       column_name: DURATION
       notes: "Named DURATION in treasury data for historical reasons"
 
@@ -49,7 +49,7 @@ risk.analytics/convexity:
     methodology_owner: quant-research@firm.com
 
   appears_in:
-    - moniker_pattern: "fixed_income.*/*"
+    - moniker_pattern: "fixed_income/*/*"
       column_name: CONVEXITY
     - moniker_pattern: "risk.cvar/*/*"
       column_name: CVX

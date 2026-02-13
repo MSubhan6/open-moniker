@@ -54,10 +54,10 @@ def demo_fetch_mode():
     """Demo: Server executes query and returns data."""
     print_section("2. FETCH MODE - Server executes query, returns data")
 
-    print("\nFetching: govies.treasury/US/10Y/ALL (limit=5)")
+    print("\nFetching: fixed_income/govies/treasury/US/10Y/ALL (limit=5)")
     print("The service executes the query and returns actual data.\n")
 
-    resp = httpx.get(f"{BASE_URL}/fetch/govies.treasury/US/10Y/ALL?limit=5")
+    resp = httpx.get(f"{BASE_URL}/fetch/fixed_income/govies/treasury/US/10Y/ALL?limit=5")
     data = resp.json()
 
     print(f"Source Type: {data['source_type']}")
@@ -154,7 +154,7 @@ def demo_compare_modes():
     """Demo: Compare resolution vs fetch for same moniker."""
     print_section("5. COMPARE MODES - Same moniker, different approaches")
 
-    path = "govies.treasury/US/10Y/ALL"
+    path = "fixed_income/govies/treasury/US/10Y/ALL"
     print(f"\nMoniker: {path}\n")
 
     # Resolution mode

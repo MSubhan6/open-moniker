@@ -74,7 +74,7 @@ def run_demo():
 
     try:
         # Describe the domain
-        info = client.describe("govies.treasury")
+        info = client.describe("fixed_income/govies/treasury")
         print(f"\n   Domain: {info.get('display_name')}")
         print(f"   Description: {info.get('description')}")
         print(f"   Source: {info.get('source_type')}")
@@ -87,7 +87,7 @@ def run_demo():
 
         # Fetch 10Y Treasury data
         print("\n   Fetching 10Y US Treasury data...")
-        data = client.read("govies.treasury/US/10Y/ALL")
+        data = client.read("fixed_income/govies/treasury/US/10Y/ALL")
         print(f"   Retrieved {len(data)} rows")
 
         if data:
@@ -244,7 +244,7 @@ def run_demo():
         print("\n   Loading data from multiple domains for analysis...")
 
         # Load data
-        treasury_data = client.read("govies.treasury/US/10Y/ALL")
+        treasury_data = client.read("fixed_income/govies/treasury/US/10Y/ALL")
         swap_data = client.read("rates.swap/USD/10Y/ALL")
 
         # Convert to DataFrames
@@ -286,7 +286,7 @@ def run_demo():
     print("7. Data Lineage Across Domains")
     print("=" * 70)
 
-    domains = ["govies.treasury", "commods.energy", "rates.swap", "mortgages.pools"]
+    domains = ["fixed_income/govies/treasury", "commods.energy", "rates.swap", "mortgages.pools"]
 
     for domain in domains:
         try:
