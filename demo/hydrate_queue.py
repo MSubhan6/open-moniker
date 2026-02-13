@@ -243,7 +243,7 @@ def main():
     print(f"    Total:          {resp.get('total', 0)}")
 
     print(f"\n  Open the review queue: {base}/requests/ui")
-    print(f"  API guide:             {base}/requests/api-guide\n")
+    print(f"  Swagger:               {base}/docs\n")
 
 
 if __name__ == "__main__":
