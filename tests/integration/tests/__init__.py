@@ -1,1 +1,0 @@
-"""Moniker integration tests."""
