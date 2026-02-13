@@ -59,6 +59,9 @@ catalog.yaml
 domains.yaml
 demo/demo_monikers.yaml
 
+# Database files
+*.db
+
 # OS
 .DS_Store
 Thumbs.db
