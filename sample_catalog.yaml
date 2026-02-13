@@ -1013,6 +1013,7 @@ credit.exposures:
       - "NOTIONAL > 0"
       - "LGD BETWEEN 0 AND 1"
       - "PD BETWEEN 0 AND 1"
+      - "EXPECTED_LOSS ≈ NOTIONAL × LGD × PD (±5%)"
     last_validated: "2026-01-28T06:30:00Z"
   tags: [credit, risk, mssql, counterparty, timeseries]
 
