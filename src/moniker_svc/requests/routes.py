@@ -141,6 +141,18 @@ async def review_queue_ui():
     return HTMLResponse(content=index_path.read_text(encoding="utf-8"), status_code=200)
 
 
+@router.get("/api-guide", response_class=HTMLResponse)
+async def api_guide():
+    """Serve the developer API guide."""
+    static_dir = Path(__file__).parent / "static"
+    guide_path = static_dir / "api_guide.html"
+
+    if not guide_path.exists():
+        raise HTTPException(status_code=404, detail="API guide not found")
+
+    return HTMLResponse(content=guide_path.read_text(encoding="utf-8"), status_code=200)
+
+
 # =============================================================================
 # Submit Request
 # =============================================================================

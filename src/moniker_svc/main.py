@@ -2594,6 +2594,7 @@ _LANDING_HTML = """
                 <h2>Review Queue</h2>
                 <p>Review and approve moniker requests. Manage the governance approval workflow.</p>
                 <a href="/requests/ui">Open Review Queue</a>
+                <a href="/requests/api-guide" style="margin-left:12px">API Guide</a>
             </div>
         </div>
 

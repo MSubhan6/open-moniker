@@ -486,6 +486,20 @@
             margin-bottom: 8px;
             display: none;
         }
+
+        .btn-api {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.85);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-api:hover { background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.5); }
     </style>
 </head>
 <body>
@@ -493,6 +507,7 @@
         <h1>Moniker Review Queue</h1>
         <div class="header-nav">
             <button class="btn-new" onclick="openSubmitForm()">+ New Request</button>
+            <a class="btn-api" href="/requests/api-guide">API Guide</a>
             <a href="/">Home</a>
             <a href="/config/ui">Catalog Config</a>
             <a href="/domains/ui">Domains</a>
