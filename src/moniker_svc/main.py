@@ -705,7 +705,7 @@ def create_demo_catalog() -> CatalogRegistry:
             quality_score=92,
             known_issues=(
                 "Weekend gaps in timeseries — no weekend data points",
-                "Petrobras (CP006) rating may lag by 1 business day",
+                "UBS Group (CP006) rating may lag by 1 business day",
             ),
             validation_rules=(
                 "NOTIONAL > 0",

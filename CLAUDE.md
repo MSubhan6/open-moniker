@@ -1,5 +1,14 @@
 # Project Notes for Claude
 
+## Git Workflow
+- **Identity**: You are MSubhan6 with full repo access
+- **Development**: Work on feature branches, push to MSubhan6 repos (origin)
+- **Integration**: Create PRs from MSubhan6 → ganizanisitara when ready
+- **Remotes**:
+  - `origin`: https://github.com/MSubhan6/open-moniker.git (push here)
+  - `upstream`: https://github.com/ganizanisitara/open-moniker-svc.git (PR target)
+- **Note**: This file (CLAUDE.md) is gitignored and stays local
+
 ## Environment
 - Use `python3` (system Python 3.13)
 - PYTHONPATH=src for running the service

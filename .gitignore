@@ -73,3 +73,6 @@ catalog_output.yaml
 # Strategy docs (sensitive)
 PLAN.md
 ROADMAP.md
+
+# Local Claude Code documentation
+CLAUDE.md

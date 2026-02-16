@@ -193,9 +193,9 @@ fixed_income/govies/sovereign:
       warehouse: MARKET_DATA_WH
       database: FIXED_INCOME
       schema: GOVIES
+      segment_names: country,tenor
       query: "SELECT asof_date, isin, country, tenor, yield, spread_vs_usd, price,\
-        \ duration\nFROM SOVEREIGN_BONDS\nWHERE ('{segments[0]}' = 'ALL' OR country\
-        \ = '{segments[0]}')\n  AND ('{segments[1]}' = 'ALL' OR tenor = '{segments[1]}')\n\
+        \ duration\nFROM SOVEREIGN_BONDS\nWHERE {filter[0]:country}\n  AND {filter[1]:tenor}\n\
         ORDER BY asof_date DESC, country, tenor\n"
 fixed_income/govies/treasury:
   display_name: US Treasury Securities
@@ -207,10 +207,10 @@ fixed_income/govies/treasury:
       warehouse: MARKET_DATA_WH
       database: FIXED_INCOME
       schema: GOVIES
+      segment_names: tenor,cusip
       query: "SELECT asof_date, cusip, tenor, coupon, yield, price, duration, convexity\n\
-        FROM TREASURY_SECURITIES\nWHERE ('{segments[0]}' = 'ALL' OR tenor = '{segments[0]}')\n\
-        \  AND ('{segments[1]}' = 'ALL' OR cusip = '{segments[1]}')\nORDER BY asof_date\
-        \ DESC, tenor\n"
+        FROM TREASURY_SECURITIES\nWHERE {filter[0]:tenor}\n  AND {filter[1]:cusip}\n\
+        ORDER BY asof_date DESC, tenor\n"
   schema:
     columns:
     - name: ASOF_DATE
@@ -590,13 +590,12 @@ rates.swap:
       warehouse: MARKET_DATA_WH
       database: RATES
       schema: SWAPS
-      segment_names: currency,tenor,date
+      segment_names: currency,tenor
       query: |
         SELECT asof_date, currency, tenor, par_rate, spread_vs_govt, dv01
         FROM SWAP_RATES
-        WHERE ('{segments[0]}' = 'ALL' OR currency = '{segments[0]}')
-          AND ('{segments[1]}' = 'ALL' OR tenor = '{segments[1]}')
-          AND ('{segments[2]}' = 'ALL' OR asof_date = TO_DATE('{segments[2]}', 'YYYYMMDD'))
+        WHERE {filter[0]:currency}
+          AND {filter[1]:tenor}
         ORDER BY asof_date DESC, currency, tenor
 reference:
   display_name: Reference Data
@@ -880,8 +879,8 @@ credit:
     support_channel: "#credit-risk-data"
 
 credit.exposures:
-  display_name: Credit Exposures
-  description: Daily counterparty credit exposure snapshots including notional, MTM, PFE, CVA, and expected loss by exposure type
+  display_name: Counterparty Credit Exposures
+  description: Daily counterparty credit exposure snapshots for financial institutions (derivatives, loans, guarantees, trade finance) including notional, MTM, PFE, CVA, and expected loss metrics
   source_binding:
     type: mssql
     config:
@@ -988,7 +987,7 @@ credit.exposures:
     quality_score: 92
     known_issues:
       - "Weekend gaps in timeseries -- no weekend data points"
-      - "Petrobras (CP006) rating may lag by 1 business day"
+      - "UBS Group (CP006) rating may lag by 1 business day"
     validation_rules:
       - "NOTIONAL > 0"
       - "LGD BETWEEN 0 AND 1"

@@ -18,14 +18,14 @@ import random
 # =============================================================================
 
 COUNTERPARTIES = [
-    ("CP001", "Goldman Sachs Group", "Financials", "AA-", "US"),
-    ("CP002", "Deutsche Bank AG", "Financials", "A-", "DE"),
-    ("CP003", "Toyota Motor Corp", "Automotive", "A+", "JP"),
-    ("CP004", "Shell plc", "Energy", "A", "GB"),
-    ("CP005", "BHP Group Ltd", "Mining", "A+", "AU"),
-    ("CP006", "Petrobras SA", "Energy", "BB-", "BR"),
-    ("CP007", "Samsung Electronics", "Technology", "AA-", "KR"),
-    ("CP008", "Nestlé SA", "Consumer Staples", "AA", "CH"),
+    ("CP001", "Goldman Sachs Group", "Investment Banking", "AA-", "US"),
+    ("CP002", "Deutsche Bank AG", "Commercial Banking", "A-", "DE"),
+    ("CP003", "JPMorgan Chase & Co", "Investment Banking", "A+", "US"),
+    ("CP004", "Morgan Stanley", "Broker-Dealer", "A", "US"),
+    ("CP005", "Barclays Bank PLC", "Commercial Banking", "A+", "GB"),
+    ("CP006", "UBS Group AG", "Wealth Management", "BB-", "CH"),
+    ("CP007", "Citigroup Inc", "Commercial Banking", "AA-", "US"),
+    ("CP008", "BNP Paribas SA", "Commercial Banking", "AA", "FR"),
 ]
 
 EXPOSURE_TYPES = ["Loan", "Derivative", "Guarantee", "TradeFinance"]
