@@ -3,7 +3,10 @@ MCP Server for Open Moniker — exposes the moniker catalog, domains,
 models, and request workflow over the Model Context Protocol.
 
 Transport: Streamable HTTP (network-accessible)
-Auth:      Reads are anonymous; writes require a bearer token.
+Auth:      Reads are anonymous.
+           Submissions require MCP_SUBMIT_TOKEN.
+           Approvals/rejections require MCP_APPROVE_TOKEN.
+           Legacy MCP_WRITE_TOKEN grants both if the split tokens are unset.
 """
 
 from __future__ import annotations
@@ -58,7 +61,12 @@ logger = logging.getLogger("mcp-openmoniker")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8051"))
 MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 
-# Write-operation bearer token — auto-generated on startup if not set.
+# Auth tokens — split by privilege level.
+# MCP_SUBMIT_TOKEN  → submit_request, list_requests
+# MCP_APPROVE_TOKEN → approve_request, reject_request, update_node_status
+# MCP_WRITE_TOKEN   → legacy fallback, grants both if split tokens are unset.
+SUBMIT_TOKEN = os.environ.get("MCP_SUBMIT_TOKEN", "")
+APPROVE_TOKEN = os.environ.get("MCP_APPROVE_TOKEN", "")
 WRITE_TOKEN = os.environ.get("MCP_WRITE_TOKEN", "")
 
 # Paths to YAML configs (relative to repo root)
@@ -81,7 +89,8 @@ class AppState:
     request_registry: RequestRegistry
     service: MonikerService
     config: Config
-    write_token: str
+    submit_token: str
+    approve_token: str
 
 
 _state: AppState | None = None
@@ -93,10 +102,16 @@ def _require_state() -> AppState:
     return _state
 
 
-def _check_write_token(token: str) -> bool:
-    """Constant-time token comparison."""
+def _check_submit_token(token: str) -> bool:
+    """Constant-time check for submission privilege."""
     s = _require_state()
-    return secrets.compare_digest(token, s.write_token)
+    return secrets.compare_digest(token, s.submit_token)
+
+
+def _check_approve_token(token: str) -> bool:
+    """Constant-time check for approval privilege."""
+    s = _require_state()
+    return secrets.compare_digest(token, s.approve_token)
 
 
 # ---------------------------------------------------------------------------
@@ -105,13 +120,20 @@ def _check_write_token(token: str) -> bool:
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
-    global _state, WRITE_TOKEN
+    global _state, SUBMIT_TOKEN, APPROVE_TOKEN, WRITE_TOKEN
 
-    # Generate token if not provided
-    if not WRITE_TOKEN:
-        WRITE_TOKEN = secrets.token_urlsafe(32)
-        logger.info("Generated write token (set MCP_WRITE_TOKEN to use a fixed one):")
-        logger.info(f"  MCP_WRITE_TOKEN={WRITE_TOKEN}")
+    # Resolve tokens: explicit split tokens take priority, then legacy
+    # fallback, then auto-generate.
+    if not SUBMIT_TOKEN:
+        SUBMIT_TOKEN = WRITE_TOKEN or secrets.token_urlsafe(32)
+    if not APPROVE_TOKEN:
+        APPROVE_TOKEN = WRITE_TOKEN or secrets.token_urlsafe(32)
+
+    if SUBMIT_TOKEN == APPROVE_TOKEN:
+        logger.warning("Submit and approve tokens are the same — set MCP_SUBMIT_TOKEN "
+                        "and MCP_APPROVE_TOKEN separately for separation of duties")
+    logger.info("Submit token (MCP_SUBMIT_TOKEN):   %s…", SUBMIT_TOKEN[:8])
+    logger.info("Approve token (MCP_APPROVE_TOKEN): %s…", APPROVE_TOKEN[:8])
 
     # Load config
     config = Config()
@@ -159,7 +181,8 @@ async def lifespan(server: FastMCP):
         request_registry=request_registry,
         service=service,
         config=config,
-        write_token=WRITE_TOKEN,
+        submit_token=SUBMIT_TOKEN,
+        approve_token=APPROVE_TOKEN,
     )
 
     logger.info(f"MCP Open Moniker server ready on {MCP_HOST}:{MCP_PORT}")
@@ -178,8 +201,9 @@ mcp = FastMCP(
         "Use the tools below to resolve monikers to source connection info, "
         "browse the catalog hierarchy, search for data assets, inspect ownership "
         "lineage, and manage moniker creation requests. "
-        "Read operations are anonymous. Write operations (submit/approve/reject "
-        "requests, update status) require passing a valid bearer token."
+        "Read operations are anonymous. Submissions require a submit token "
+        "(MCP_SUBMIT_TOKEN). Approvals, rejections, and status changes require "
+        "a separate approve token (MCP_APPROVE_TOKEN)."
     ),
     host=MCP_HOST,
     port=MCP_PORT,
@@ -557,16 +581,21 @@ async def get_model_detail(model_path: str) -> str:
 # WRITE TOOLS  (require bearer token)
 # ===================================================================
 
-def _auth_error() -> str:
-    return json.dumps({"error": "unauthorized", "message": "Invalid or missing write token. Pass the value of MCP_WRITE_TOKEN."})
+def _submit_auth_error() -> str:
+    return json.dumps({"error": "unauthorized", "message": "Invalid or missing submit token. Pass the value of MCP_SUBMIT_TOKEN."})
+
+
+def _approve_auth_error() -> str:
+    return json.dumps({"error": "unauthorized", "message": "Invalid or missing approve token. Pass the value of MCP_APPROVE_TOKEN."})
 
 
 @mcp.tool(
     name="submit_request",
     description=(
         "Submit a new moniker creation request for governance review.  "
-        "REQUIRES a valid write token.  Provide the moniker path, display name, "
-        "description, justification, and optionally proposed ownership and source binding."
+        "REQUIRES a valid submit token (MCP_SUBMIT_TOKEN).  Provide the moniker path, "
+        "display name, description, justification, and optionally proposed ownership "
+        "and source binding."
     ),
 )
 async def submit_request(
@@ -584,8 +613,8 @@ async def submit_request(
     tags: str = "",
 ) -> str:
     """Submit a moniker creation request."""
-    if not _check_write_token(token):
-        return _auth_error()
+    if not _check_submit_token(token):
+        return _submit_auth_error()
 
     s = _require_state()
 
@@ -690,13 +719,13 @@ async def list_requests_tool(status: str | None = None) -> str:
     name="approve_request",
     description=(
         "Approve a pending moniker request and activate it in the catalog.  "
-        "REQUIRES a valid write token."
+        "REQUIRES a valid approve token (MCP_APPROVE_TOKEN)."
     ),
 )
 async def approve_request(token: str, request_id: str, actor: str = "mcp-admin", reason: str = "Approved via MCP") -> str:
     """Approve a moniker request."""
-    if not _check_write_token(token):
-        return _auth_error()
+    if not _check_approve_token(token):
+        return _approve_auth_error()
 
     s = _require_state()
     from datetime import datetime, timezone
@@ -733,13 +762,13 @@ async def approve_request(token: str, request_id: str, actor: str = "mcp-admin",
     name="reject_request",
     description=(
         "Reject a pending moniker request.  "
-        "REQUIRES a valid write token."
+        "REQUIRES a valid approve token (MCP_APPROVE_TOKEN)."
     ),
 )
 async def reject_request(token: str, request_id: str, actor: str = "mcp-admin", reason: str = "Rejected via MCP") -> str:
     """Reject a moniker request."""
-    if not _check_write_token(token):
-        return _auth_error()
+    if not _check_approve_token(token):
+        return _approve_auth_error()
 
     s = _require_state()
     from datetime import datetime, timezone
@@ -777,13 +806,13 @@ async def reject_request(token: str, request_id: str, actor: str = "mcp-admin", 
     description=(
         "Update the lifecycle status of a catalog node.  "
         "Valid statuses: draft, pending_review, approved, active, deprecated, archived. "
-        "REQUIRES a valid write token."
+        "REQUIRES a valid approve token (MCP_APPROVE_TOKEN)."
     ),
 )
 async def update_node_status(token: str, path: str, new_status: str, actor: str = "mcp-admin") -> str:
     """Update a catalog node's status."""
-    if not _check_write_token(token):
-        return _auth_error()
+    if not _check_approve_token(token):
+        return _approve_auth_error()
 
     s = _require_state()
     try:

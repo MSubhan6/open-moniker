@@ -10,7 +10,7 @@ pip install -e .
 python server.py          # starts on localhost:8051
 ```
 
-The server prints a **write token** on startup (only needed for write operations — reads are anonymous).
+The server prints **two auth tokens** on startup — one for submitting requests, one for approving them. Reads are anonymous.
 
 ## Adding to Claude Code
 
@@ -63,18 +63,28 @@ OpenCode uses a config file. Add to `.opencode.json` (project root or `~/.openco
 |---|---|---|
 | `MCP_PORT` | `8051` | Server port |
 | `MCP_HOST` | `0.0.0.0` | Bind address |
-| `MCP_WRITE_TOKEN` | *(auto-generated)* | Bearer token for write operations |
+| `MCP_SUBMIT_TOKEN` | *(auto-generated)* | Token for `submit_request`, `list_requests` |
+| `MCP_APPROVE_TOKEN` | *(auto-generated)* | Token for `approve_request`, `reject_request`, `update_node_status` |
+| `MCP_WRITE_TOKEN` | — | Legacy fallback — grants both if split tokens are unset |
 | `CATALOG_YAML` | `../sample_catalog.yaml` | Path to catalog definition |
 | `DOMAINS_YAML` | `../sample_domains.yaml` | Path to domains definition |
 | `MODELS_YAML` | `../sample_models.yaml` | Path to models definition |
 
+**Separation of duties**: Give the submit token to automation bots that propose new monikers. Give the approve token only to governance reviewers. The two tokens should be different.
+
 To pass env vars in Claude Code:
 
 ```bash
+# Automation bot — can submit but NOT approve
 claude mcp add --transport stdio --scope user \
-  --env CATALOG_YAML=/data/catalog.yaml \
-  --env MCP_WRITE_TOKEN=my-secret-token \
-  open-moniker \
+  --env MCP_SUBMIT_TOKEN=bot-submit-token-here \
+  open-moniker-submit \
+  -- python /path/to/open-moniker/mcp-server-openmoniker/server.py --transport stdio
+
+# Governance reviewer — can approve/reject
+claude mcp add --transport stdio --scope user \
+  --env MCP_APPROVE_TOKEN=reviewer-approve-token-here \
+  open-moniker-approve \
   -- python /path/to/open-moniker/mcp-server-openmoniker/server.py --transport stdio
 ```
 
@@ -95,12 +105,17 @@ claude mcp add --transport stdio --scope user \
 | `get_models` | List all business models/measures |
 | `get_model_detail` | Details for a specific model (formula, ownership, appearances) |
 
-### Write (require `MCP_WRITE_TOKEN`)
+### Submit (require `MCP_SUBMIT_TOKEN`)
 
 | Tool | Description |
 |---|---|
 | `submit_request` | Submit a moniker creation request for governance review |
 | `list_requests` | List requests, optionally filtered by status |
+
+### Approve (require `MCP_APPROVE_TOKEN`)
+
+| Tool | Description |
+|---|---|
 | `approve_request` | Approve a pending request and activate the moniker |
 | `reject_request` | Reject a pending request |
 | `update_node_status` | Change a node's lifecycle status |
