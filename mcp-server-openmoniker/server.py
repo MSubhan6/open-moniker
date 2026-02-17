@@ -51,8 +51,9 @@ from moniker_svc.service import (
 from moniker_svc.telemetry.emitter import TelemetryEmitter
 from moniker_svc.telemetry.events import CallerIdentity
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger("mcp-openmoniker")
+logger.setLevel(logging.INFO)
 
 # ---------------------------------------------------------------------------
 # Configuration
