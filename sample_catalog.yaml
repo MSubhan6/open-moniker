@@ -168,7 +168,7 @@ commodities.metals:
       path_template: /v2/commodities/metals/{segments[0]}/{segments[1]}
       method: GET
       auth_type: api_key
-fixed_income:
+fixed.income:
   display_name: Fixed Income
   description: Government bonds, corporates, and structured products
   ownership:
@@ -180,10 +180,10 @@ fixed_income:
   documentation:
     glossary: https://confluence.firm.com/display/FI/Fixed+Income+Glossary
     data_dictionary: https://confluence.firm.com/display/FI/Bond+Data+Dictionary
-fixed_income/govies:
+fixed.income/govies:
   display_name: Government Bonds
   description: Sovereign debt securities and yields
-fixed_income/govies/sovereign:
+fixed.income/govies/sovereign:
   display_name: International Sovereign Bonds
   description: Non-US government bonds (Bunds, Gilts, JGBs, etc.)
   source_binding:
@@ -197,7 +197,7 @@ fixed_income/govies/sovereign:
       query: "SELECT asof_date, isin, country, tenor, yield, spread_vs_usd, price,\
         \ duration\nFROM SOVEREIGN_BONDS\nWHERE {filter[0]:country}\n  AND {filter[1]:tenor}\n\
         ORDER BY asof_date DESC, country, tenor\n"
-fixed_income/govies/treasury:
+fixed.income/govies/treasury:
   display_name: US Treasury Securities
   description: US Treasury bills, notes, and bonds with yields and pricing
   source_binding:
@@ -244,14 +244,14 @@ fixed_income/govies/treasury:
     - Build yield curve for discounting
     - Calculate duration and convexity
     - Benchmark against risk-free rate
-fixed_income/mbs:
+fixed.income/mbs:
   display_name: Mortgage-Backed Securities
   description: Agency MBS pool data and prepayment analytics
   ownership:
     data_specialist: mbs-research@firm.com
     support_channel: '#mortgage-data'
   classification: confidential
-fixed_income/mbs/pools:
+fixed.income/mbs/pools:
   display_name: MBS Pool Data
   description: Agency MBS pool characteristics and analytics
   source_binding:
@@ -293,7 +293,7 @@ fixed_income/mbs/pools:
     - agency
     - prepayment
     - fixed-income
-fixed_income/mbs/prepay:
+fixed.income/mbs/prepay:
   display_name: Prepayment Projections
   description: MBS prepayment model outputs
   source_binding:

@@ -76,7 +76,7 @@ rates:
   wiki_link: https://confluence.firm.com/display/RATES/Rates
   notes: Interest rate curves, swaps, and money market rates
 
-fixed_income:
+fixed.income:
   id: 6
   display_name: Fixed Income
   short_code: FI

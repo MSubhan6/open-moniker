@@ -71,10 +71,10 @@ APPROVE_TOKEN = os.environ.get("MCP_APPROVE_TOKEN", "")
 WRITE_TOKEN = os.environ.get("MCP_WRITE_TOKEN", "")
 
 # Paths to YAML configs (relative to repo root)
-CATALOG_YAML = os.environ.get("CATALOG_YAML", str(_REPO_ROOT / "sample_catalog.yaml"))
-DOMAINS_YAML = os.environ.get("DOMAINS_YAML", str(_REPO_ROOT / "sample_domains.yaml"))
-MODELS_YAML = os.environ.get("MODELS_YAML", str(_REPO_ROOT / "sample_models.yaml"))
-CONFIG_YAML = os.environ.get("CONFIG_YAML", str(_REPO_ROOT / "sample_config.yaml"))
+CATALOG_YAML = os.environ.get("CATALOG_YAML", str(_REPO_ROOT / "catalog.yaml"))
+DOMAINS_YAML = os.environ.get("DOMAINS_YAML", str(_REPO_ROOT / "domains.yaml"))
+MODELS_YAML = os.environ.get("MODELS_YAML", str(_REPO_ROOT / "models.yaml"))
+CONFIG_YAML = os.environ.get("CONFIG_YAML", str(_REPO_ROOT / "config.yaml"))
 REQUESTS_YAML = os.environ.get("REQUESTS_YAML", "")
 
 
@@ -136,28 +136,38 @@ async def lifespan(server: FastMCP):
     logger.info("Submit token (MCP_SUBMIT_TOKEN):   %s…", SUBMIT_TOKEN[:8])
     logger.info("Approve token (MCP_APPROVE_TOKEN): %s…", APPROVE_TOKEN[:8])
 
+    # Validate required config files exist
+    _required = {"CATALOG_YAML": CATALOG_YAML, "DOMAINS_YAML": DOMAINS_YAML,
+                  "MODELS_YAML": MODELS_YAML, "CONFIG_YAML": CONFIG_YAML}
+    _missing = {k: v for k, v in _required.items() if not Path(v).exists()}
+    if _missing:
+        for env_var, path in _missing.items():
+            sample = path.replace(".yaml", "").rsplit("/", 1)
+            sample_path = path.replace(".yaml", "").rsplit("/", 1)[0] + "/sample_" + Path(path).name
+            logger.error(f"Required config not found: {path}")
+            logger.error(f"  Copy from sample:  cp {sample_path} {path}")
+            logger.error(f"  Or set env var:    {env_var}=/path/to/your/file.yaml")
+        raise SystemExit(
+            "Missing config files. Copy from sample_* files or run the config script. "
+            "See errors above for details."
+        )
+
     # Load config
-    config = Config()
-    if Path(CONFIG_YAML).exists():
-        config = Config.from_yaml(CONFIG_YAML)
+    config = Config.from_yaml(CONFIG_YAML)
 
     # Load catalog
-    catalog = CatalogRegistry()
-    if Path(CATALOG_YAML).exists():
-        catalog = load_catalog(CATALOG_YAML)
-        logger.info(f"Loaded catalog: {len(catalog.all_paths())} paths from {CATALOG_YAML}")
+    catalog = load_catalog(CATALOG_YAML)
+    logger.info(f"Loaded catalog: {len(catalog.all_paths())} paths from {CATALOG_YAML}")
 
     # Load domains
     domain_registry = DomainRegistry()
-    if Path(DOMAINS_YAML).exists():
-        domains_list = load_domains_from_yaml(DOMAINS_YAML, domain_registry)
-        logger.info(f"Loaded domains: {domain_registry.count()} from {DOMAINS_YAML}")
+    domains_list = load_domains_from_yaml(DOMAINS_YAML, domain_registry)
+    logger.info(f"Loaded domains: {domain_registry.count()} from {DOMAINS_YAML}")
 
     # Load models
     model_registry = ModelRegistry()
-    if Path(MODELS_YAML).exists():
-        load_models_from_yaml(MODELS_YAML, model_registry)
-        logger.info(f"Loaded models: {model_registry.count()} from {MODELS_YAML}")
+    load_models_from_yaml(MODELS_YAML, model_registry)
+    logger.info(f"Loaded models: {model_registry.count()} from {MODELS_YAML}")
 
     # Load requests (if file exists)
     request_registry = RequestRegistry()
