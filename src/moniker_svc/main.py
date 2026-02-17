@@ -20,7 +20,7 @@ if _EXTERNAL_DATA.exists() and str(_EXTERNAL_DATA) not in sys.path:
     sys.path.insert(0, str(_EXTERNAL_DATA))
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Query
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -1162,6 +1162,11 @@ app.include_router(config_ui_routes.router)
 app.include_router(domain_routes.router)
 app.include_router(model_routes.router)
 app.include_router(request_routes.router)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 @app.exception_handler(MonikerParseError)
