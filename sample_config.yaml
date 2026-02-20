@@ -1,4 +1,7 @@
-# Moniker Service Configuration
+# Service Configuration
+
+# Project branding
+project_name: "Open Moniker"
 
 server:
   host: "0.0.0.0"

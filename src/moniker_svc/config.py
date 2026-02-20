@@ -104,8 +104,21 @@ class RequestsConfig:
 
 
 @dataclass
+class GovernanceConfig:
+    """Enterprise governance configuration."""
+    rate_limiter_enabled: bool = True
+    requests_per_second: float = 50.0
+    burst_capacity: float = 200.0
+    global_requests_per_second: float = 500.0
+    global_burst_capacity: float = 2000.0
+
+
+@dataclass
 class Config:
     """Main configuration container."""
+    # Project branding
+    project_name: str = "Open Moniker"
+
     server: ServerConfig = field(default_factory=ServerConfig)
     telemetry: TelemetryConfig = field(default_factory=TelemetryConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
@@ -116,12 +129,14 @@ class Config:
     deprecation: DeprecationConfig = field(default_factory=DeprecationConfig)
     models: ModelsConfig = field(default_factory=ModelsConfig)
     requests: RequestsConfig = field(default_factory=RequestsConfig)
+    governance: GovernanceConfig = field(default_factory=GovernanceConfig)
 
     @classmethod
     def from_dict(cls, data: dict) -> Config:
         """Create config from dictionary."""
         auth_data = data.get("auth", {})
         return cls(
+            project_name=data.get("project_name", "Open Moniker"),
             server=ServerConfig(**data.get("server", {})),
             telemetry=TelemetryConfig(**data.get("telemetry", {})),
             cache=CacheConfig(**data.get("cache", {})),
@@ -132,6 +147,7 @@ class Config:
             deprecation=DeprecationConfig(**data.get("deprecation", {})),
             models=ModelsConfig(**data.get("models", {})),
             requests=RequestsConfig(**data.get("requests", {})),
+            governance=GovernanceConfig(**data.get("governance", {})),
         )
 
     @classmethod

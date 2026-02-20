@@ -10,12 +10,13 @@ import (
 
 // Config represents the service configuration
 type Config struct {
-	Server    ServerConfig    `yaml:"server"`
-	Telemetry TelemetryConfig `yaml:"telemetry"`
-	Cache     CacheConfig     `yaml:"cache"`
-	Catalog   CatalogConfig   `yaml:"catalog"`
-	Auth      AuthConfig      `yaml:"auth"`
-	ConfigUI  ConfigUIConfig  `yaml:"config_ui"`
+	ProjectName string          `yaml:"project_name"`
+	Server      ServerConfig    `yaml:"server"`
+	Telemetry   TelemetryConfig `yaml:"telemetry"`
+	Cache       CacheConfig     `yaml:"cache"`
+	Catalog     CatalogConfig   `yaml:"catalog"`
+	Auth        AuthConfig      `yaml:"auth"`
+	ConfigUI    ConfigUIConfig  `yaml:"config_ui"`
 }
 
 // ServerConfig represents server configuration
