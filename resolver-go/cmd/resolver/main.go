@@ -17,6 +17,7 @@ import (
 	"github.com/ganizanisitara/open-moniker-svc/resolver-go/internal/config"
 	"github.com/ganizanisitara/open-moniker-svc/resolver-go/internal/handlers"
 	"github.com/ganizanisitara/open-moniker-svc/resolver-go/internal/service"
+	"github.com/ganizanisitara/open-moniker-svc/resolver-go/internal/telemetry"
 )
 
 func main() {
@@ -37,6 +38,18 @@ func main() {
 	} else if cfg.Server.Port == 0 {
 		cfg.Server.Port = 8053 // Default fallback
 	}
+
+	// Set default project name if not configured
+	if cfg.ProjectName == "" {
+		cfg.ProjectName = "Open Moniker"
+	}
+
+	// Display startup banner
+	log.Printf("==============================================")
+	log.Printf("  %s - Go Resolver", cfg.ProjectName)
+	log.Printf("  Port: %d", cfg.Server.Port)
+	log.Printf("  Catalog: %s", cfg.Catalog.DefinitionFile)
+	log.Printf("==============================================")
 
 	// Initialize components
 	registry := catalog.NewRegistry()
@@ -65,8 +78,21 @@ func main() {
 		log.Printf("Loaded %d catalog nodes", len(nodes))
 	}
 
+	// Initialize telemetry
+	emitter, err := telemetry.NewFromConfig(&cfg.Telemetry)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize telemetry: %v", err)
+		emitter = telemetry.NewNoOpEmitter()
+	}
+	defer emitter.Stop()
+
+	if cfg.Telemetry.Enabled {
+		log.Printf("Telemetry enabled: sink=%s, batch_size=%d, flush_interval=%.3fs",
+			cfg.Telemetry.SinkType, cfg.Telemetry.BatchSize, cfg.Telemetry.FlushIntervalSeconds)
+	}
+
 	// Create service
-	svc := service.NewMonikerService(registry, cacheInst, cfg)
+	svc := service.NewMonikerService(registry, cacheInst, cfg, emitter)
 
 	// Set up HTTP routes
 	mux := http.NewServeMux()
@@ -76,9 +102,17 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		counts := registry.Count()
+
+		// Get telemetry stats
+		emitted, dropped, errors, queueDepth := emitter.GetStats()
+		dropRate := 0.0
+		if emitted+dropped > 0 {
+			dropRate = float64(dropped) / float64(emitted+dropped) * 100
+		}
+
 		fmt.Fprintf(w, `{
 			"status": "healthy",
-			"service": "moniker-resolver-go",
+			"service": "%s",
 			"version": "0.1.0-beta",
 			"catalog": {
 				"total_nodes": %d,
@@ -87,8 +121,17 @@ func main() {
 			"cache": {
 				"size": %d,
 				"enabled": %t
+			},
+			"telemetry": {
+				"enabled": %t,
+				"emitted": %d,
+				"dropped": %d,
+				"errors": %d,
+				"queue_depth": %d,
+				"drop_rate": %.2f
 			}
-		}`, counts["total"], counts["active"], cacheInst.Size(), cfg.Cache.Enabled)
+		}`, cfg.ProjectName, counts["total"], counts["active"], cacheInst.Size(), cfg.Cache.Enabled,
+			cfg.Telemetry.Enabled, emitted, dropped, errors, queueDepth, dropRate)
 	})
 
 	// Resolution endpoints

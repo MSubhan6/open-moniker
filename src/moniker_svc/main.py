@@ -154,6 +154,7 @@ class AccessReport(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    service: str = "Open Moniker"
     telemetry: dict[str, Any]
     cache: dict[str, Any]
     rate_limiter: dict[str, Any] | None = None
@@ -291,6 +292,7 @@ TreeNodeResponse.model_rebuild()
 
 
 # Global service instance (initialized in lifespan)
+_config: Any | None = None  # Config object
 _service: MonikerService | None = None
 _telemetry_task: asyncio.Task | None = None
 _batcher_task: asyncio.Task | None = None
@@ -323,6 +325,7 @@ def _set_resolver_globals(
     telemetry_task,
     batcher_task,
     catalog_dir,
+    config=None,
 ) -> None:
     """Set module-level globals consumed by resolver route handlers.
 
@@ -332,7 +335,7 @@ def _set_resolver_globals(
     """
     global _service, _rate_limiter, _circuit_breaker, _adapter_registry
     global _cache_manager, _redis_cache, _cache_refresh_task
-    global _telemetry_task, _batcher_task, _catalog_dir
+    global _telemetry_task, _batcher_task, _catalog_dir, _config
 
     _service = service
     _rate_limiter = rate_limiter
@@ -344,6 +347,7 @@ def _set_resolver_globals(
     _telemetry_task = telemetry_task
     _batcher_task = batcher_task
     _catalog_dir = catalog_dir
+    _config = config
 
 
 def create_demo_catalog() -> CatalogRegistry:
@@ -896,11 +900,12 @@ async def lifespan(app: FastAPI):
     global _service, _telemetry_task, _batcher_task, _adapter_registry, _catalog_dir
     global _rate_limiter, _circuit_breaker
     global _domain_registry, _model_registry, _request_registry
-    global _redis_cache, _cache_manager, _cache_refresh_task
+    global _redis_cache, _cache_manager, _cache_refresh_task, _config
 
     logger.info("Starting moniker resolution service...")
 
     config, config_path = bs.load_config()
+    _config = config  # Store config for route handlers
 
     catalog, catalog_dir, catalog_definition_path = bs.build_catalog_registry(config, config_path)
     _catalog_dir = catalog_dir
@@ -1130,8 +1135,10 @@ async def resolution_error_handler(request: Request, exc: ResolutionError):
 @resolver_router.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health():
     """Health check endpoint with telemetry, cache, rate limiter, and circuit breaker statistics."""
+    project_name = _config.project_name if _config else "Open Moniker"
     return HealthResponse(
         status="healthy",
+        service=project_name,
         telemetry=_service.telemetry.stats if _service else {},
         cache=_service.cache.stats if _service else {},
         rate_limiter=_rate_limiter.stats if _rate_limiter else None,
@@ -2559,7 +2566,11 @@ _LANDING_HTML = """
 @app.get("/", response_class=HTMLResponse, tags=["Health"])
 async def root():
     """Landing page with links to all UIs and documentation."""
-    return HTMLResponse(content=_LANDING_HTML)
+    project_name = _config.project_name if _config else "Open Moniker"
+
+    # Generate dynamic HTML with project name
+    html = _LANDING_HTML.replace("Moniker Service", project_name)
+    return HTMLResponse(content=html)
 
 
 # Simple HTML UI for tree visualization

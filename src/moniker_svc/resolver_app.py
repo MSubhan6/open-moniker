@@ -92,6 +92,7 @@ async def lifespan(app: FastAPI):
         telemetry_task=telemetry_task,
         batcher_task=batcher_task,
         catalog_dir=catalog_dir,
+        config=config,
     )
     # The NotFoundError handler in main.py also inspects _domain_registry.
     _main_mod._domain_registry = domains
