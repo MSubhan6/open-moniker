@@ -1,0 +1,50 @@
+# Spring Boot Configuration for Moniker Resolver
+spring:
+  application:
+    name: moniker-resolver-java
+
+  # Enable virtual threads (Java 21)
+  threads:
+    virtual:
+      enabled: true
+
+  # JSON configuration
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      indent_output: false
+      write_dates_as_timestamps: false
+
+  # Disable unnecessary auto-configurations
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+# Server configuration
+server:
+  port: ${PORT:8054}
+  tomcat:
+    threads:
+      max: 1000           # Allow many threads (virtual threads are lightweight)
+      min-spare: 50
+    max-connections: 10000   # High connection limit
+    accept-count: 1000       # Queue size for pending connections
+    connection-timeout: 5s
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/plain
+
+# Moniker-specific configuration
+moniker:
+  project-name: ${PROJECT_NAME:Open Moniker}
+  config-file: ${CONFIG_FILE:../config.yaml}
+  catalog-file: ${CATALOG_FILE:../catalog.yaml}
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.ganizanisitara.moniker.resolver: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
