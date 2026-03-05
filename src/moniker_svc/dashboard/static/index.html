@@ -28,34 +28,80 @@
             background: var(--color-bg);
             color: var(--color-text);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
+
+        /* Header with navigation */
         header {
             background: var(--c-navy);
             color: #fff;
-            padding: 0 24px;
-            height: 56px;
+            padding: 0;
+            border-bottom: 3px solid var(--c-peacock);
+        }
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
             display: flex;
             align-items: center;
-            gap: 12px;
-        }
-        header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: .02em; }
-        header span { font-size: 0.8rem; opacity: 0.65; margin-left: auto; }
-        main {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 28px 20px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            padding: 14px 24px;
             gap: 20px;
         }
-        @media (max-width: 700px) { main { grid-template-columns: 1fr; } }
+        header h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: .02em;
+            margin: 0;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .nav-btn {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 14px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        .nav-btn.active {
+            background: var(--c-peacock);
+            border-color: var(--c-peacock);
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 24px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
         .card {
             background: var(--color-surface);
             border: 1px solid var(--border);
             border-radius: 6px;
             padding: 20px 22px;
         }
-        .card.full-width { grid-column: 1 / -1; }
+        .card.full-width {
+            grid-column: 1 / -1;
+        }
         .card-title {
             font-size: 0.72rem;
             font-weight: 700;
@@ -63,76 +109,101 @@
             letter-spacing: .08em;
             color: var(--c-gray);
             margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        /* Stat pill row */
+
+        /* Stat pills */
         .stat-row { display: flex; flex-wrap: wrap; gap: 10px; }
         .stat-pill {
             border-radius: 4px;
-            padding: 8px 14px;
-            font-size: 0.85rem;
+            padding: 10px 16px;
+            font-size: 0.90rem;
             font-weight: 600;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-width: 80px;
+            min-width: 90px;
         }
         .stat-pill .label {
             font-size: 0.68rem;
             font-weight: 400;
-            opacity: 0.8;
-            margin-top: 3px;
+            opacity: 0.85;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         .pill-total    { background: var(--c-navy);    color: #fff; }
         .pill-active   { background: var(--c-green);   color: #fff; }
         .pill-pending  { background: var(--c-yellow);  color: #fff; }
         .pill-draft    { background: var(--c-gray);    color: #fff; }
         .pill-approved { background: var(--c-olive);   color: #fff; }
-        .pill-deprecated { background: var(--c-wine);  color: #fff; }
-        .pill-archived { background: #888;             color: #fff; }
-        .pill-rejected { background: var(--c-red);     color: #fff; }
-        .pill-default  { background: var(--c-peacock); color: #fff; }
-        /* Domain table */
+
+        /* Domain grid */
         .domain-grid {
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 4px 16px;
+            gap: 8px 16px;
             align-items: center;
         }
-        .domain-name { font-size: 0.88rem; color: var(--c-peacock); font-weight: 500; }
+        .domain-name {
+            font-size: 0.88rem;
+            color: var(--c-peacock);
+            font-weight: 500;
+        }
         .domain-bar-wrap {
             display: flex;
             align-items: center;
             gap: 8px;
             width: 100%;
+            min-width: 150px;
         }
         .domain-bar {
-            height: 8px;
+            height: 10px;
             background: var(--c-peacock);
-            border-radius: 3px;
+            border-radius: 5px;
             transition: width 0.3s;
+            flex-grow: 1;
         }
-        .domain-count { font-size: 0.82rem; color: var(--c-gray); min-width: 28px; text-align: right; }
+        .domain-count {
+            font-size: 0.82rem;
+            color: var(--c-gray);
+            min-width: 32px;
+            text-align: right;
+            font-weight: 500;
+        }
         .domain-row {
             display: contents;
         }
-        /* Recent requests table */
-        table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+        }
         th {
             text-align: left;
-            padding: 6px 10px;
+            padding: 8px 10px;
             background: var(--color-bg);
             color: var(--c-gray);
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: .06em;
+            border-bottom: 2px solid var(--border);
+            font-weight: 600;
+        }
+        td {
+            padding: 10px;
             border-bottom: 1px solid var(--border);
         }
-        td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
         tr:last-child td { border-bottom: none; }
+
         .badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 3px 10px;
+            border-radius: 12px;
             font-size: 0.72rem;
             font-weight: 600;
             text-transform: lowercase;
@@ -142,363 +213,450 @@
         .badge-rejected       { background: #F8D7DA; color: #721c24; }
         .badge-draft          { background: #e9ecef; color: #495057; }
         .badge-active         { background: #D4EDDA; color: #155724; }
-        .badge-default        { background: #e9ecef; color: #495057; }
-        /* Placeholder */
-        .placeholder {
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-healthy { background: var(--c-green); }
+        .status-warning { background: var(--c-yellow); }
+        .status-error { background: var(--c-red); }
+        .status-unknown { background: var(--c-gray); }
+
+        /* Telemetry section */
+        .telemetry-status {
+            font-size: 0.75rem;
             color: var(--c-gray);
-            font-size: 0.85rem;
+            margin-left: auto;
+        }
+
+        .resolver-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .resolver-card {
+            background: var(--color-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 0.82rem;
+        }
+
+        .resolver-card .name {
+            font-weight: 600;
+            color: var(--c-navy);
+            margin-bottom: 6px;
+        }
+
+        .resolver-card .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            color: var(--c-gray);
+        }
+
+        .resolver-card .metric-value {
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--c-gray);
             font-style: italic;
-            padding: 8px 0;
         }
-        .empty-state {
-            color: var(--c-gray);
-            font-size: 0.83rem;
-            text-align: center;
-            padding: 20px 0;
-            opacity: 0.7;
-        }
-        /* Error banner */
-        #error-banner {
-            display: none;
-            background: #F8D7DA;
-            color: #721c24;
-            padding: 10px 20px;
-            font-size: 0.85rem;
-            text-align: center;
-        }
-        /* Refresh hint */
-        #refresh-hint {
-            font-size: 0.72rem;
-            color: var(--c-gray);
-            opacity: 0.7;
+
+        canvas {
+            max-height: 300px;
         }
     </style>
 </head>
 <body>
-
-<header>
-    <h1>Moniker Dashboard</h1>
-    <span id="refresh-hint">Auto-refreshes every 30 s</span>
-</header>
-
-<div id="error-banner">Failed to load stats — is the service running?</div>
-
-<main>
-    <!-- Catalog Summary -->
-    <div class="card">
-        <div class="card-title">Moniker Catalog</div>
-        <div class="stat-row" id="catalog-stats">
-            <div class="empty-state">Loading…</div>
+    <header>
+        <div class="header-content">
+            <h1>📊 Moniker Dashboard</h1>
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn">🏠 Home</a>
+                <a href="/config/ui" class="nav-btn">⚙️ Config</a>
+                <a href="/dashboard" class="nav-btn active">📊 Dashboard</a>
+                <a href="/docs" class="nav-btn">📚 API Docs</a>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Request Queue -->
-    <div class="card">
-        <div class="card-title">Request Queue</div>
-        <div class="stat-row" id="request-stats">
-            <div class="empty-state">Loading…</div>
+    <main>
+        <!-- Catalog Stats -->
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Catalog Overview</div>
+                <div class="stat-row" id="catalogStats">
+                    <div class="stat-pill pill-total">
+                        <span id="totalNodes">-</span>
+                        <span class="label">Total Nodes</span>
+                    </div>
+                    <div class="stat-pill pill-active">
+                        <span id="activeNodes">-</span>
+                        <span class="label">Active</span>
+                    </div>
+                    <div class="stat-pill pill-pending">
+                        <span id="pendingNodes">-</span>
+                        <span class="label">Pending</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Request Queue</div>
+                <div class="stat-row" id="requestStats">
+                    <div class="stat-pill pill-draft">
+                        <span id="draftRequests">-</span>
+                        <span class="label">Draft</span>
+                    </div>
+                    <div class="stat-pill pill-pending">
+                        <span id="pendingRequests">-</span>
+                        <span class="label">Review</span>
+                    </div>
+                    <div class="stat-pill pill-approved">
+                        <span id="approvedRequests">-</span>
+                        <span class="label">Approved</span>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Domain Breakdown -->
-    <div class="card">
-        <div class="card-title">Active Monikers by Domain</div>
-        <div id="domain-breakdown" class="domain-grid">
-            <div class="empty-state" style="grid-column:1/-1">Loading…</div>
+        <!-- Domains by size -->
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Domains by Size</div>
+                <div class="domain-grid" id="domainGrid">
+                    <div class="no-data">Loading...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Recent Requests</div>
+                <table id="recentRequestsTable">
+                    <thead>
+                        <tr>
+                            <th>Moniker</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="3" class="no-data">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
 
-    <!-- Recent Requests -->
-    <div class="card">
-        <div class="card-title">Recent Requests</div>
-        <div id="recent-requests">
-            <div class="empty-state">Loading…</div>
+        <!-- Live Telemetry -->
+        <div class="card full-width">
+            <div class="card-title">
+                <span class="status-indicator" id="telemetryIndicator"></span>
+                Live Telemetry
+                <span class="telemetry-status" id="telemetryStatus">Connecting...</span>
+            </div>
+
+            <div id="telemetryContent">
+                <div class="no-data">Waiting for telemetry data...<br><small>Telemetry may be disabled or no traffic has been generated yet.</small></div>
+            </div>
         </div>
-    </div>
 
-    <!-- Live Telemetry -->
-    <div class="card full-width">
-        <div class="card-title">Live Telemetry <span id="telemetry-status" style="float:right; font-size:0.7rem; font-weight:400; color:var(--c-gray);">⚪ Connecting...</span></div>
-        <canvas id="rpsChart" style="max-height:200px; margin-bottom:20px;"></canvas>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Latency (p95)</div>
-        <canvas id="latencyChart" style="max-height:180px;"></canvas>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Top Monikers (Last Hour)</div>
-        <div id="topMonikers">
-            <div class="empty-state">Loading...</div>
+        <!-- Charts -->
+        <div class="grid">
+            <div class="card full-width">
+                <div class="card-title">Requests per Second (Last 60s)</div>
+                <canvas id="rpsChart"></canvas>
+            </div>
         </div>
-    </div>
-</main>
 
-<script>
-    const PILL_CLASS = {
-        total:          'pill-total',
-        active:         'pill-active',
-        pending_review: 'pill-pending',
-        draft:          'pill-draft',
-        approved:       'pill-approved',
-        deprecated:     'pill-deprecated',
-        archived:       'pill-archived',
-        rejected:       'pill-rejected',
-    };
+        <div class="grid">
+            <div class="card full-width">
+                <div class="card-title">Latency p95 (ms)</div>
+                <canvas id="latencyChart"></canvas>
+            </div>
+        </div>
+    </main>
 
-    function pillClass(key) {
-        return PILL_CLASS[key] || 'pill-default';
-    }
+    <script>
+        // Configuration
+        const API_BASE = '';  // Same origin
+        const UPDATE_INTERVAL = 5000;  // 5 seconds for dashboard stats
 
-    function badgeClass(status) {
-        return 'badge badge-' + (status in {'pending_review':1,'approved':1,'rejected':1,'draft':1,'active':1} ? status : 'default');
-    }
-
-    function fmtDate(iso) {
-        if (!iso) return '—';
-        try {
-            const d = new Date(iso);
-            return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        } catch (_) { return iso; }
-    }
-
-    function renderCatalog(catalog) {
-        const el = document.getElementById('catalog-stats');
-        if (!catalog) { el.innerHTML = '<div class="empty-state">No data</div>'; return; }
-
-        const pills = [];
-        pills.push(`<div class="stat-pill pill-total"><span>${catalog.total}</span><span class="label">total</span></div>`);
-        for (const [k, v] of Object.entries(catalog.by_status || {})) {
-            pills.push(`<div class="stat-pill ${pillClass(k)}"><span>${v}</span><span class="label">${k.replace('_', ' ')}</span></div>`);
-        }
-        el.innerHTML = pills.join('');
-    }
-
-    function renderRequests(requests) {
-        const el = document.getElementById('request-stats');
-        if (!requests || !requests.by_status || Object.keys(requests.by_status).length === 0) {
-            el.innerHTML = '<div class="empty-state">No requests yet</div>';
-            return;
-        }
-        const pills = Object.entries(requests.by_status).map(([k, v]) =>
-            `<div class="stat-pill ${pillClass(k)}"><span>${v}</span><span class="label">${k.replace('_', ' ')}</span></div>`
-        );
-        el.innerHTML = pills.join('');
-    }
-
-    function renderDomains(catalog) {
-        const el = document.getElementById('domain-breakdown');
-        const domains = catalog && catalog.by_domain ? catalog.by_domain : {};
-        const entries = Object.entries(domains);
-        if (entries.length === 0) {
-            el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No active monikers</div>';
-            return;
-        }
-        const max = Math.max(...entries.map(([, v]) => v), 1);
-        el.innerHTML = entries.map(([name, count]) => {
-            const pct = Math.round((count / max) * 100);
-            return `
-                <div class="domain-name">${name}</div>
-                <div class="domain-bar-wrap">
-                    <div class="domain-bar" style="width:${pct}%"></div>
-                    <span class="domain-count">${count}</span>
-                </div>`;
-        }).join('');
-    }
-
-    function renderRecent(requests) {
-        const el = document.getElementById('recent-requests');
-        const recent = requests && requests.recent ? requests.recent : [];
-        if (recent.length === 0) {
-            el.innerHTML = '<div class="empty-state">No requests yet</div>';
-            return;
-        }
-        const rows = recent.map(r => `
-            <tr>
-                <td><code style="font-size:0.8rem">${r.request_id}</code></td>
-                <td>${r.path}</td>
-                <td><span class="${badgeClass(r.status)}">${r.status.replace('_', ' ')}</span></td>
-                <td style="color:var(--c-gray)">${fmtDate(r.created_at)}</td>
-            </tr>`).join('');
-        el.innerHTML = `
-            <table>
-                <thead><tr><th>ID</th><th>Path</th><th>Status</th><th>Date</th></tr></thead>
-                <tbody>${rows}</tbody>
-            </table>`;
-    }
-
-    async function loadStats() {
-        try {
-            const res = await fetch('/dashboard/api/stats');
-            if (!res.ok) throw new Error(res.status);
-            const data = await res.json();
-            document.getElementById('error-banner').style.display = 'none';
-            renderCatalog(data.catalog);
-            renderRequests(data.requests);
-            renderDomains(data.catalog);
-            renderRecent(data.requests);
-        } catch (err) {
-            document.getElementById('error-banner').style.display = 'block';
-            console.error('Dashboard fetch failed:', err);
-        }
-    }
-
-    loadStats();
-    setInterval(loadStats, 30000);
-
-    // ========== LIVE TELEMETRY ==========
-
-    let ws = null;
-    let rpsChart = null;
-    let latencyChart = null;
-    const MAX_POINTS = 60;
-    const COLORS = {
-        'local-dev': 'var(--c-peacock)',
-        'local-uat': 'var(--c-olive)',
-        'us-east-1a': 'var(--c-peacock)',
-        'us-east-1b': 'var(--c-green)',
-        'us-east-1c': 'var(--c-wine)',
-        'us-west-2a': 'var(--c-red)',
-        'us-west-2b': 'var(--c-yellow)',
-        'us-west-2c': 'var(--c-olive)',
-    };
-
-    function getResolverColor(id) {
-        return COLORS[id] || 'var(--c-gray)';
-    }
-
-    function initTelemetryCharts() {
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: true,
-            animation: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { display: false },
-                y: { beginAtZero: true, ticks: { font: { size: 10 } } }
-            }
+        // Chart.js setup
+        const chartColors = {
+            'us-east-1a': 'rgb(0, 133, 135)',
+            'us-east-1b': 'rgb(0, 150, 57)',
+            'us-east-1c': 'rgb(120, 157, 74)',
+            'us-west-2a': 'rgb(208, 0, 43)',
+            'us-west-2b': 'rgb(242, 169, 0)',
+            'us-west-2c': 'rgb(109, 32, 119)',
+            'local-dev': 'rgb(0, 85, 135)',
+            'default': 'rgb(83, 86, 90)'
         };
 
-        rpsChart = new Chart(document.getElementById('rpsChart'), {
+        // Initialize charts
+        const rpsChart = new Chart(document.getElementById('rpsChart'), {
             type: 'line',
-            data: { labels: [], datasets: [] },
-            options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, title: { display: true, text: 'Requests/Second' } } } }
+            data: {
+                labels: [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: true, position: 'bottom' }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Requests/sec' } },
+                    x: { display: false }
+                }
+            }
         });
 
-        latencyChart = new Chart(document.getElementById('latencyChart'), {
+        const latencyChart = new Chart(document.getElementById('latencyChart'), {
             type: 'line',
-            data: { labels: [], datasets: [] },
-            options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, title: { display: true, text: 'Milliseconds' } } } }
-        });
-    }
-
-    function updateTelemetryCharts(resolvers, timestamp) {
-        const time = new Date(timestamp).toLocaleTimeString();
-
-        // Update RPS
-        rpsChart.data.labels.push(time);
-        if (rpsChart.data.labels.length > MAX_POINTS) rpsChart.data.labels.shift();
-
-        resolvers.forEach(r => {
-            let ds = rpsChart.data.datasets.find(d => d.label === r.resolver_id);
-            if (!ds) {
-                ds = {
-                    label: r.resolver_id,
-                    data: [],
-                    borderColor: getResolverColor(r.resolver_id),
-                    backgroundColor: getResolverColor(r.resolver_id) + '20',
-                    tension: 0.3,
-                    fill: true,
-                    borderWidth: 2
-                };
-                rpsChart.data.datasets.push(ds);
+            data: {
+                labels: [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: true, position: 'bottom' }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Milliseconds' } },
+                    x: { display: false }
+                }
             }
-            ds.data.push(r.rps);
-            if (ds.data.length > MAX_POINTS) ds.data.shift();
         });
-        rpsChart.update();
 
-        // Update Latency (reuse same labels)
-        latencyChart.data.labels = [...rpsChart.data.labels];
-        resolvers.forEach(r => {
-            let ds = latencyChart.data.datasets.find(d => d.label === r.resolver_id);
-            if (!ds) {
-                ds = {
-                    label: r.resolver_id,
-                    data: [],
-                    borderColor: getResolverColor(r.resolver_id),
-                    backgroundColor: getResolverColor(r.resolver_id) + '20',
-                    tension: 0.3,
-                    fill: true,
-                    borderWidth: 2
-                };
-                latencyChart.data.datasets.push(ds);
-            }
-            ds.data.push(r.p95_latency_ms);
-            if (ds.data.length > MAX_POINTS) ds.data.shift();
-        });
-        latencyChart.update();
-    }
+        // WebSocket for live telemetry
+        let ws = null;
+        let wsReconnectTimer = null;
+        let hasReceivedData = false;
 
-    async function updateTopMonikers() {
-        try {
-            const res = await fetch('/dashboard/api/top-monikers?hours=1&limit=5');
-            const data = await res.json();
-            const el = document.getElementById('topMonikers');
+        function connectTelemetryWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/dashboard/live`;
 
-            if (data.length === 0) {
-                el.innerHTML = '<div class="empty-state">No data available</div>';
+            console.log('Connecting to telemetry WebSocket:', wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('Telemetry WebSocket connected');
+                document.getElementById('telemetryStatus').textContent = '🟢 Connected';
+                document.getElementById('telemetryIndicator').className = 'status-indicator status-healthy';
+                if (wsReconnectTimer) {
+                    clearTimeout(wsReconnectTimer);
+                    wsReconnectTimer = null;
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    hasReceivedData = true;
+                    updateTelemetryDisplay(data);
+                } catch (err) {
+                    console.error('Error parsing telemetry data:', err);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('telemetryStatus').textContent = '🔴 Connection Error';
+                document.getElementById('telemetryIndicator').className = 'status-indicator status-error';
+            };
+
+            ws.onclose = () => {
+                console.log('Telemetry WebSocket disconnected');
+                document.getElementById('telemetryStatus').textContent = '🟡 Reconnecting...';
+                document.getElementById('telemetryIndicator').className = 'status-indicator status-warning';
+
+                // Attempt reconnect after 5 seconds
+                if (!wsReconnectTimer) {
+                    wsReconnectTimer = setTimeout(connectTelemetryWebSocket, 5000);
+                }
+            };
+        }
+
+        function updateTelemetryDisplay(data) {
+            const { timestamp, resolvers } = data;
+
+            if (!resolvers || resolvers.length === 0) {
+                document.getElementById('telemetryContent').innerHTML =
+                    '<div class="no-data">No telemetry data available.<br><small>Generate some traffic to see live metrics.</small></div>';
                 return;
             }
 
-            const rows = data.map(m => `
-                <tr>
-                    <td style="font-size:0.82rem">${m.moniker}</td>
-                    <td style="text-align:right; color:var(--c-gray)">${m.count}</td>
-                    <td style="text-align:right; color:var(--c-gray); font-size:0.8rem">${m.avg_latency_ms.toFixed(1)}ms</td>
-                </tr>`).join('');
+            // Update resolver cards
+            const resolverHTML = resolvers.map(r => `
+                <div class="resolver-card">
+                    <div class="name">${r.resolver_id || 'Unknown'}</div>
+                    <div class="metric">
+                        <span>RPS:</span>
+                        <span class="metric-value">${(r.rps || 0).toFixed(1)}</span>
+                    </div>
+                    <div class="metric">
+                        <span>Avg Latency:</span>
+                        <span class="metric-value">${(r.avg_latency_ms || 0).toFixed(1)}ms</span>
+                    </div>
+                    <div class="metric">
+                        <span>P95 Latency:</span>
+                        <span class="metric-value">${(r.p95_latency_ms || 0).toFixed(1)}ms</span>
+                    </div>
+                    <div class="metric">
+                        <span>Errors:</span>
+                        <span class="metric-value" style="color: ${r.errors > 0 ? 'var(--c-red)' : 'var(--c-green)'}">
+                            ${r.errors || 0}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
 
-            el.innerHTML = `
-                <table style="font-size:0.84rem">
-                    <thead><tr><th>Moniker</th><th style="text-align:right">Count</th><th style="text-align:right">Latency</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                </table>`;
-        } catch (err) {
-            console.error('Failed to fetch top monikers:', err);
+            document.getElementById('telemetryContent').innerHTML = `
+                <div class="resolver-list">${resolverHTML}</div>
+            `;
+
+            // Update charts
+            updateCharts(timestamp, resolvers);
         }
-    }
 
-    function connectTelemetryWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/dashboard/live`;
+        function updateCharts(timestamp, resolvers) {
+            const timeLabel = new Date(timestamp).toLocaleTimeString();
 
-        ws = new WebSocket(wsUrl);
+            // Add timestamp to labels
+            if (rpsChart.data.labels.length > 60) {
+                rpsChart.data.labels.shift();
+                rpsChart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            rpsChart.data.labels.push(timeLabel);
 
-        ws.onopen = () => {
-            document.getElementById('telemetry-status').innerHTML = '🟢 Connected';
-        };
+            if (latencyChart.data.labels.length > 60) {
+                latencyChart.data.labels.shift();
+                latencyChart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            latencyChart.data.labels.push(timeLabel);
 
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            updateTelemetryCharts(data.resolvers, data.timestamp);
-        };
+            // Update datasets
+            resolvers.forEach(resolver => {
+                const resolverId = resolver.resolver_id || 'unknown';
+                const color = chartColors[resolverId] || chartColors.default;
 
-        ws.onerror = () => {
-            document.getElementById('telemetry-status').innerHTML = '🔴 Error';
-        };
+                // RPS chart
+                let rpsDataset = rpsChart.data.datasets.find(ds => ds.label === resolverId);
+                if (!rpsDataset) {
+                    rpsDataset = {
+                        label: resolverId,
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        tension: 0.3,
+                        fill: false
+                    };
+                    rpsChart.data.datasets.push(rpsDataset);
+                }
+                rpsDataset.data.push(resolver.rps || 0);
 
-        ws.onclose = () => {
-            document.getElementById('telemetry-status').innerHTML = '⚪ Reconnecting...';
-            setTimeout(connectTelemetryWebSocket, 3000);
-        };
-    }
+                // Latency chart
+                let latencyDataset = latencyChart.data.datasets.find(ds => ds.label === resolverId);
+                if (!latencyDataset) {
+                    latencyDataset = {
+                        label: resolverId,
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        tension: 0.3,
+                        fill: false
+                    };
+                    latencyChart.data.datasets.push(latencyDataset);
+                }
+                latencyDataset.data.push(resolver.p95_latency_ms || 0);
+            });
 
-    // Initialize telemetry
-    initTelemetryCharts();
-    connectTelemetryWebSocket();
-    updateTopMonikers();
-    setInterval(updateTopMonikers, 10000);
-</script>
+            rpsChart.update('none');
+            latencyChart.update('none');
+        }
+
+        // Load dashboard stats
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/api/stats`);
+                const data = await response.json();
+
+                // Update catalog stats
+                document.getElementById('totalNodes').textContent = data.catalog_stats.total_nodes;
+                document.getElementById('activeNodes').textContent = data.catalog_stats.by_status.active || 0;
+                document.getElementById('pendingNodes').textContent = data.catalog_stats.by_status.pending || 0;
+
+                // Update request stats
+                document.getElementById('draftRequests').textContent = data.request_stats.by_status.draft || 0;
+                document.getElementById('pendingRequests').textContent = data.request_stats.by_status.pending_review || 0;
+                document.getElementById('approvedRequests').textContent = data.request_stats.by_status.approved || 0;
+
+                // Update domains
+                const domainGrid = document.getElementById('domainGrid');
+                if (data.catalog_stats.by_domain && Object.keys(data.catalog_stats.by_domain).length > 0) {
+                    const maxCount = Math.max(...Object.values(data.catalog_stats.by_domain));
+                    const domains = Object.entries(data.catalog_stats.by_domain)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10);
+
+                    domainGrid.innerHTML = domains.map(([domain, count]) => `
+                        <div class="domain-row">
+                            <div class="domain-name">${domain}</div>
+                            <div class="domain-bar-wrap">
+                                <div class="domain-bar" style="width: ${(count / maxCount * 100)}%"></div>
+                                <div class="domain-count">${count}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    domainGrid.innerHTML = '<div class="no-data">No domains yet</div>';
+                }
+
+                // Update recent requests
+                const tbody = document.querySelector('#recentRequestsTable tbody');
+                if (data.recent_requests && data.recent_requests.length > 0) {
+                    tbody.innerHTML = data.recent_requests.slice(0, 5).map(req => `
+                        <tr>
+                            <td>${req.moniker_name || req.id}</td>
+                            <td><span class="badge badge-${req.status}">${req.status}</span></td>
+                            <td>${new Date(req.submitted_at).toLocaleDateString()}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" class="no-data">No requests yet</td></tr>';
+                }
+
+            } catch (err) {
+                console.error('Error loading dashboard stats:', err);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardStats();
+            setInterval(loadDashboardStats, UPDATE_INTERVAL);
+            connectTelemetryWebSocket();
+        });
+    </script>
 </body>
 </html>
