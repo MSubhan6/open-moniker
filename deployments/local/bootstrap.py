@@ -163,11 +163,21 @@ class Environment:
                 "AWS_AZ": "local",
             })
 
-            # Start Java process
+            # Start Java process with system properties
             log_file = SCRIPT_DIR / f"{self.name}-java.log"
             with open(log_file, "w") as log:
                 process = subprocess.Popen(
-                    ["java", "-jar", str(jar_file)],
+                    [
+                        "java",
+                        f"-Dmoniker.telemetry.enabled=true",
+                        f"-Dmoniker.telemetry.sink-type=sqlite",
+                        f"-Dmoniker.telemetry.sink-config.db-path={self.db_path}",
+                        f"-Dmoniker.resolver-name={self.config['resolver_name']}",
+                        f"-Dmoniker.region=local",
+                        f"-Dmoniker.az=local",
+                        "-jar",
+                        str(jar_file),
+                    ],
                     cwd=JAVA_RESOLVER,
                     env=env,
                     stdout=log,
