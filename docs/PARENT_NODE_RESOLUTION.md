@@ -140,49 +140,50 @@ curl http://localhost:8050/resolve/reference.calendars
 
 **Note:** Go compiler not available in current environment, but code is ready.
 
-### ⚠️ Java (Partial - Known Issue)
+### ✅ Java (Complete - FIXED!)
 
-**Status:** Logic complete, but blocked by catalog issue
+**Status:** Fully working!
 
-**What Works:**
-- ✅ Leaf node resolution with `type:"leaf"`
-- ✅ Source bindings working perfectly
-- ✅ All resolve logic correct
+**The Bug:** The `getParentPath()` method only checked for "/" separators, but our catalog uses "." for domain hierarchy. Paths like "reference.calendars" returned null parent, so children map stayed empty.
 
-**What Doesn't Work:**
-- ❌ Parent node resolution
-- **Root Cause:** Catalog's `children` map not populated during YAML load
-- **Symptom:** `catalog.childrenPaths(path)` always returns empty list
-- **Impact:** Parent nodes still throw "No source binding found"
+**The Fix:** Updated `getParentPath()` to handle both separators:
+```java
+private String getParentPath(String path) {
+    // Try "/" first (sub-path separator)
+    int lastSlash = path.lastIndexOf('/');
+    if (lastSlash > 0) return path.substring(0, lastSlash);
+
+    // Try "." (domain hierarchy separator)
+    int lastDot = path.lastIndexOf('.');
+    if (lastDot > 0) return path.substring(0, lastDot);
+
+    return null; // No parent
+}
+```
 
 **Changes:**
-- `resolver-java/.../service/MonikerService.java` - Full parent logic implemented
+- `resolver-java/.../catalog/CatalogRegistry.java` - Fixed parent path detection
+- `resolver-java/.../service/MonikerService.java` - Parent node logic
 - `resolver-java/.../service/ResolveResult.java` - Added `type` and `children`
 
 **Testing:**
 ```bash
+# Parent node - WORKS ✅
+curl http://localhost:8054/resolve/reference
+# → {"type":"parent", "children":["reference.calendars", ...]}
+
+# Nested parent - WORKS ✅
+curl http://localhost:8054/resolve/reference.calendars
+# → {"type":"parent", "children":["reference.calendars/exchange", ...]}
+
 # Leaf node - WORKS ✅
 curl http://localhost:8054/resolve/commodities.crypto
 # → {"type":"leaf", "sourceType":"rest", ...}
 
-# Parent node - FAILS ❌
-curl http://localhost:8054/resolve/reference
-# → {"error":"No source binding found for path: reference"}
-
-# List endpoint also shows empty children
+# List endpoint - WORKS ✅
 curl http://localhost:8054/list/reference
-# → {"children":[], "count":0}  ← Should show reference.calendars, etc.
+# → {"children":["reference.calendars", "reference.classifications"], "count":2}
 ```
-
-**Fix Needed:**
-The Java `CatalogRegistry` needs to populate the `children` map during YAML loading.
-The parent-child relationships exist in the catalog nodes but aren't being indexed
-into the `Map<String, Set<String>> children` field.
-
-**Files to Fix:**
-- `resolver-java/src/main/java/.../catalog/CatalogRegistry.java`
-- Look for the `register()` or YAML loading method
-- Add logic to populate `children` map based on path hierarchy
 
 ---
 
