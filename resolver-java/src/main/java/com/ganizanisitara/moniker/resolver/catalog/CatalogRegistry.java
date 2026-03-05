@@ -286,11 +286,24 @@ public class CatalogRegistry {
     // Helper methods
 
     private String getParentPath(String path) {
-        if (path == null || path.isEmpty() || !path.contains("/")) {
+        if (path == null || path.isEmpty()) {
             return null;
         }
+
+        // Try "/" first (sub-path separator)
         int lastSlash = path.lastIndexOf('/');
-        return path.substring(0, lastSlash);
+        if (lastSlash > 0) {
+            return path.substring(0, lastSlash);
+        }
+
+        // Try "." (domain hierarchy separator)
+        int lastDot = path.lastIndexOf('.');
+        if (lastDot > 0) {
+            return path.substring(0, lastDot);
+        }
+
+        // No parent (root level node)
+        return null;
     }
 
     private List<String> getAncestorPaths(String path) {
