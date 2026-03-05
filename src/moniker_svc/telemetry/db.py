@@ -137,7 +137,7 @@ async def get_live_metrics(seconds: int = 10) -> list[dict[str, Any]]:
                     SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as errors,
                     SUM(cache_hit) as cache_hits
                 FROM access_log
-                WHERE datetime(timestamp) > datetime('now', '-' || ? || ' seconds')
+                WHERE datetime(substr(timestamp, 1, 19)) > datetime('now', '-' || ? || ' seconds')
                 GROUP BY resolver_id, region
                 """,
                 (seconds,),
