@@ -150,34 +150,25 @@ class Environment:
                     return False
 
             # Prepare environment variables
+            # Spring Boot converts MONIKER_TELEMETRY_ENABLED to moniker.telemetry.enabled
             env = os.environ.copy()
             env.update({
-                "PORT": str(self.config["java_port"]),
-                "CONFIG_FILE": str(self.config_dir / "config.yaml"),
-                "CATALOG_FILE": str(self.config_dir / "catalog.yaml"),
-                "TELEMETRY_ENABLED": "true",
-                "TELEMETRY_SINK_TYPE": "sqlite",
-                "TELEMETRY_DB_PATH": str(self.db_path),
-                "RESOLVER_NAME": self.config["resolver_name"],
-                "AWS_REGION": "local",
-                "AWS_AZ": "local",
+                "SERVER_PORT": str(self.config["java_port"]),
+                "MONIKER_CONFIG_FILE": str(self.config_dir / "config.yaml"),
+                "MONIKER_CATALOG_FILE": str(self.config_dir / "catalog.yaml"),
+                "MONIKER_TELEMETRY_ENABLED": "true",
+                "MONIKER_TELEMETRY_SINKTYPE": "sqlite",  # Spring Boot needs no hyphens in env vars
+                "MONIKER_TELEMETRY_SINKCONFIG_DBPATH": str(self.db_path),
+                "MONIKER_RESOLVERNAME": self.config["resolver_name"],
+                "MONIKER_REGION": "local",
+                "MONIKER_AZ": "local",
             })
 
-            # Start Java process with system properties
+            # Start Java process (env vars are picked up by Spring Boot automatically)
             log_file = SCRIPT_DIR / f"{self.name}-java.log"
             with open(log_file, "w") as log:
                 process = subprocess.Popen(
-                    [
-                        "java",
-                        f"-Dmoniker.telemetry.enabled=true",
-                        f"-Dmoniker.telemetry.sink-type=sqlite",
-                        f"-Dmoniker.telemetry.sink-config.db-path={self.db_path}",
-                        f"-Dmoniker.resolver-name={self.config['resolver_name']}",
-                        f"-Dmoniker.region=local",
-                        f"-Dmoniker.az=local",
-                        "-jar",
-                        str(jar_file),
-                    ],
+                    ["java", "-jar", str(jar_file)],
                     cwd=JAVA_RESOLVER,
                     env=env,
                     stdout=log,

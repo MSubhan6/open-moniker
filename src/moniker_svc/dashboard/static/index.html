@@ -601,21 +601,21 @@
                 const response = await fetch(`${API_BASE}/dashboard/api/stats`);
                 const data = await response.json();
 
-                // Update catalog stats
-                document.getElementById('totalNodes').textContent = data.catalog_stats.total_nodes;
-                document.getElementById('activeNodes').textContent = data.catalog_stats.by_status.active || 0;
-                document.getElementById('pendingNodes').textContent = data.catalog_stats.by_status.pending || 0;
+                // Update catalog stats (API returns "catalog" not "catalog_stats")
+                document.getElementById('totalNodes').textContent = data.catalog?.total || 0;
+                document.getElementById('activeNodes').textContent = data.catalog?.by_status?.active || 0;
+                document.getElementById('pendingNodes').textContent = data.catalog?.by_status?.pending || 0;
 
-                // Update request stats
-                document.getElementById('draftRequests').textContent = data.request_stats.by_status.draft || 0;
-                document.getElementById('pendingRequests').textContent = data.request_stats.by_status.pending_review || 0;
-                document.getElementById('approvedRequests').textContent = data.request_stats.by_status.approved || 0;
+                // Update request stats (API returns "requests" not "request_stats")
+                document.getElementById('draftRequests').textContent = data.requests?.by_status?.draft || 0;
+                document.getElementById('pendingRequests').textContent = data.requests?.by_status?.pending_review || 0;
+                document.getElementById('approvedRequests').textContent = data.requests?.by_status?.approved || 0;
 
-                // Update domains
+                // Update domains (API returns "catalog.by_domain")
                 const domainGrid = document.getElementById('domainGrid');
-                if (data.catalog_stats.by_domain && Object.keys(data.catalog_stats.by_domain).length > 0) {
-                    const maxCount = Math.max(...Object.values(data.catalog_stats.by_domain));
-                    const domains = Object.entries(data.catalog_stats.by_domain)
+                if (data.catalog?.by_domain && Object.keys(data.catalog.by_domain).length > 0) {
+                    const maxCount = Math.max(...Object.values(data.catalog.by_domain));
+                    const domains = Object.entries(data.catalog.by_domain)
                         .sort((a, b) => b[1] - a[1])
                         .slice(0, 10);
 
@@ -632,14 +632,14 @@
                     domainGrid.innerHTML = '<div class="no-data">No domains yet</div>';
                 }
 
-                // Update recent requests
+                // Update recent requests (API returns "requests.recent" not "recent_requests")
                 const tbody = document.querySelector('#recentRequestsTable tbody');
-                if (data.recent_requests && data.recent_requests.length > 0) {
-                    tbody.innerHTML = data.recent_requests.slice(0, 5).map(req => `
+                if (data.requests?.recent && data.requests.recent.length > 0) {
+                    tbody.innerHTML = data.requests.recent.slice(0, 5).map(req => `
                         <tr>
-                            <td>${req.moniker_name || req.id}</td>
+                            <td>${req.path || req.request_id}</td>
                             <td><span class="badge badge-${req.status}">${req.status}</span></td>
-                            <td>${new Date(req.submitted_at).toLocaleDateString()}</td>
+                            <td>${new Date(req.created_at).toLocaleDateString()}</td>
                         </tr>
                     `).join('');
                 } else {
