@@ -89,18 +89,21 @@ class ResolveResult:
     """Full resolution result including ownership and metadata."""
     moniker: str
     path: str
-    source: ResolvedSource
+    source: ResolvedSource | None  # None for parent nodes
     ownership: ResolvedOwnership
     node: CatalogNode | None = None
 
     # Where in the hierarchy the binding was found
-    binding_path: str = ""
+    binding_path: str | None = None  # None for parent nodes
 
     # Sub-path relative to binding (for hierarchical sources)
     sub_path: str | None = None
 
     # Successor redirect metadata
     redirected_from: str | None = None
+
+    # Children paths (for parent nodes without source bindings)
+    children: list[str] | None = None
 
 
 @dataclass
@@ -183,7 +186,27 @@ class MonikerService:
                 # Find source binding
                 binding_info = self.catalog.find_source_binding(path_str)
                 if binding_info is None:
-                    raise NotFoundError(f"No source binding for: {path_str}")
+                    # Check if this is a parent node with children
+                    children = self.catalog.children_paths(path_str)
+                    if children:
+                        # This is a parent node - return children instead of error
+                        node = self.catalog.get(path_str)
+                        ownership = self.catalog.resolve_ownership(path_str, self.domain_registry)
+
+                        result = ResolveResult(
+                            moniker=moniker_str,
+                            path=path_str,
+                            source=None,  # No source for parent nodes
+                            ownership=ownership,
+                            node=node,
+                            binding_path=None,
+                            sub_path=None,
+                            redirected_from=None,
+                            children=sorted(children),  # Add children list
+                        )
+                        return result
+                    else:
+                        raise NotFoundError(f"No source binding for: {path_str}")
 
                 binding, binding_path = binding_info
 
@@ -919,7 +942,7 @@ class MonikerService:
             outcome=outcome,
             latency_ms=latency_ms,
             error_message=error_message,
-            resolved_source_type=result.source.source_type if result else None,
+            resolved_source_type=result.source.source_type if result and result.source else None,
             owner_at_access=result.ownership.accountable_owner if result else None,
             metadata={"event_type": "resolution"},
             deprecated=deprecated,

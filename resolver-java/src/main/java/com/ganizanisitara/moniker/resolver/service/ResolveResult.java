@@ -20,12 +20,13 @@ import java.util.Map;
 public class ResolveResult {
     private String moniker;
     private String path;
+    private String type;  // "leaf" or "parent"
     private String version;
     private String namespace;
-    private String sourceType;
-    private Map<String, Object> sourceConfig;
+    private String sourceType;  // null for parent nodes
+    private Map<String, Object> sourceConfig;  // null for parent nodes
     private Map<String, Object> schema;
-    private String query;
+    private String query;  // null for parent nodes
     private ResolvedOwnership ownership;
     private Map<String, Object> accessPolicy;
     private List<String> warnings;
@@ -34,6 +35,7 @@ public class ResolveResult {
     private String successor;
     private boolean deprecated;
     private int estimatedRows;
+    private List<String> children;  // populated for parent nodes
 
     public ResolveResult(String moniker, String path) {
         this.moniker = moniker;

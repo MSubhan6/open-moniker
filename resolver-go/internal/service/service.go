@@ -60,6 +60,23 @@ func (s *MonikerService) Resolve(ctx context.Context, monikerStr string, caller 
 	// Find source binding (walk hierarchy if needed)
 	binding, bindingPath := s.catalog.FindSourceBinding(path)
 	if binding == nil {
+		// Check if this is a parent node with children
+		children := s.catalog.ChildrenPaths(path)
+		if len(children) > 0 {
+			// This is a parent node - return children list
+			ownership := s.catalog.ResolveOwnership(path)
+			result = &ResolveResult{
+				Moniker:   monikerStr,
+				Path:      path,
+				Type:      "parent",
+				Source:    nil,
+				Ownership: ownership,
+				Children:  children,
+			}
+			return result, nil
+		}
+
+		// No source binding and no children - not found
 		outcome = telemetry.OutcomeNotFound
 		err = &NotFoundError{Path: path}
 		return nil, err
@@ -159,6 +176,7 @@ func (s *MonikerService) buildResolveResult(m *moniker.Moniker, path string, bin
 	return &ResolveResult{
 		Moniker:     m.String(),
 		Path:        path,
+		Type:        "leaf", // This is a leaf node with source binding
 		Source:      source,
 		Ownership:   ownership,
 		Node:        node,

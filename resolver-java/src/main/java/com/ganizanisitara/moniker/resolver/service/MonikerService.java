@@ -54,6 +54,26 @@ public class MonikerService {
             CatalogNode node = catalog.findSourceBinding(path);
 
             if (node == null) {
+                // Check if this is a parent node with children
+                List<String> children = catalog.childrenPaths(path);
+                if (!children.isEmpty()) {
+                    // This is a parent node - return children list
+                    ResolvedOwnership ownership = catalog.resolveOwnership(path);
+
+                    ResolveResult result = new ResolveResult(monikerStr, path);
+                    result.setType("parent");
+                    result.setVersion(moniker.getVersion());
+                    result.setNamespace(moniker.getNamespace());
+                    result.setOwnership(ownership);
+                    result.setChildren(new ArrayList<>(children));
+                    result.setWarnings(new ArrayList<>());
+
+                    // Emit success telemetry for parent node
+                    emitTelemetry(eventBuilder, startTime, 200, EventOutcome.SUCCESS, null, null);
+                    return result;
+                }
+
+                // No source binding and no children - not found
                 emitTelemetry(eventBuilder, startTime, 404, EventOutcome.NOT_FOUND, null, null);
                 throw new ResolutionException("No source binding found for path: " + path, 404);
             }
@@ -101,6 +121,7 @@ public class MonikerService {
 
         // Build result
         ResolveResult result = new ResolveResult(monikerStr, path);
+        result.setType("leaf");  // This is a leaf node with source binding
         result.setVersion(moniker.getVersion());
         result.setNamespace(moniker.getNamespace());
 

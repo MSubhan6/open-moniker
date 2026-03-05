@@ -18,12 +18,14 @@ type ResolvedSource struct {
 type ResolveResult struct {
 	Moniker        string                       `json:"moniker"`
 	Path           string                       `json:"path"`
-	Source         *ResolvedSource              `json:"source"`
+	Type           string                       `json:"type"` // "leaf" or "parent"
+	Source         *ResolvedSource              `json:"source,omitempty"` // nil for parent nodes
 	Ownership      *catalog.ResolvedOwnership   `json:"ownership"`
 	Node           *catalog.CatalogNode         `json:"node,omitempty"`
-	BindingPath    string                       `json:"binding_path"`
+	BindingPath    string                       `json:"binding_path,omitempty"`
 	SubPath        *string                      `json:"sub_path,omitempty"`
 	RedirectedFrom *string                      `json:"redirected_from,omitempty"`
+	Children       []string                     `json:"children,omitempty"` // populated for parent nodes
 }
 
 // DescribeResult represents metadata about a path

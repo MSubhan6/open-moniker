@@ -74,15 +74,17 @@ class ResolveResponse(BaseModel):
     """Response from /resolve - tells client how to connect to source."""
     moniker: str
     path: str
-    source_type: str
-    connection: dict[str, Any]
+    type: str  # "leaf" for resolvable endpoints, "parent" for catalog nodes with children
+    source_type: str | None = None  # Optional for parent nodes
+    connection: dict[str, Any] | None = None  # Optional for parent nodes
     query: str | None = None
     params: dict[str, Any] = {}
     schema_info: dict[str, Any] | None = None
     read_only: bool = True
     ownership: dict[str, Any]
-    binding_path: str
+    binding_path: str | None = None  # Optional for parent nodes
     sub_path: str | None = None
+    children: list[str] | None = None  # Populated for parent nodes
     # Enterprise additions
     status: str | None = None            # Node lifecycle status
     deprecation_message: str | None = None  # Warning if deprecated
@@ -1222,15 +1224,21 @@ async def resolve_moniker(
         sunset_deadline = getattr(node, 'sunset_deadline', None)
         migration_guide_url = getattr(node, 'migration_guide_url', None)
 
+    # Determine if this is a parent or leaf node
+    is_parent = result.source is None and result.children is not None
+    node_type = "parent" if is_parent else "leaf"
+
     response = ResolveResponse(
         moniker=result.moniker,
         path=result.path,
-        source_type=result.source.source_type,
-        connection=result.source.connection,
-        query=result.source.query,
-        params=result.source.params,
-        schema_info=result.source.schema,
-        read_only=result.source.read_only,
+        type=node_type,
+        source_type=result.source.source_type if result.source else None,
+        connection=result.source.connection if result.source else None,
+        query=result.source.query if result.source else None,
+        params=result.source.params if result.source else {},
+        schema_info=result.source.schema if result.source else None,
+        read_only=result.source.read_only if result.source else True,
+        children=result.children,
         ownership={
             "accountable_owner": result.ownership.accountable_owner,
             "accountable_owner_source": result.ownership.accountable_owner_source,
