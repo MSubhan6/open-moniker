@@ -34,7 +34,7 @@ from .catalog.registry import CatalogRegistry
 from .catalog.loader import load_catalog
 from .catalog.types import (
     CatalogNode, Ownership, SourceBinding, SourceType,
-    DataSchema, ColumnSchema, DataQuality, Freshness, SLA, AccessPolicy, Documentation,
+    DataSchema, ColumnSchema, DataQuality, SLA, AccessPolicy, Documentation,
 )
 from .config import Config
 from .moniker.parser import parse_moniker
@@ -122,7 +122,6 @@ class DescribeResponse(BaseModel):
     # Data governance fields
     data_quality: dict[str, Any] | None = None
     sla: dict[str, Any] | None = None
-    freshness: dict[str, Any] | None = None
 
     # Machine-readable schema for AI agents
     schema: dict[str, Any] | None = None
@@ -761,13 +760,7 @@ def create_demo_catalog() -> CatalogRegistry:
             ),
             last_validated="2026-01-28T06:30:00Z",
         ),
-        freshness=Freshness(
-            last_loaded="2026-01-28T07:15:00Z",
-            refresh_schedule="07:00 ET daily",
-            source_system="Credit Risk Engine (SQL Server)",
-        ),
         sla=SLA(
-            freshness="T+1",
             availability="99.5%",
             support_hours="business hours ET",
             escalation_contact="credit-risk-oncall@firm.com",
@@ -837,13 +830,7 @@ def create_demo_catalog() -> CatalogRegistry:
             ),
             last_validated="2026-01-28T06:30:00Z",
         ),
-        freshness=Freshness(
-            last_loaded="2026-01-28T07:15:00Z",
-            refresh_schedule="07:00 ET daily",
-            source_system="Credit Risk Engine (SQL Server)",
-        ),
         sla=SLA(
-            freshness="T+0 (intraday updates)",
             availability="99.9%",
             support_hours="24/7",
             escalation_contact="credit-risk-oncall@firm.com",
@@ -1327,21 +1314,9 @@ async def describe_moniker(
     if result.node and result.node.sla:
         s = result.node.sla
         sla = {
-            "freshness": s.freshness,
             "availability": s.availability,
             "support_hours": s.support_hours,
             "escalation_contact": s.escalation_contact,
-        }
-
-    # Build freshness dict if present
-    freshness = None
-    if result.node and result.node.freshness:
-        f = result.node.freshness
-        freshness = {
-            "last_loaded": f.last_loaded,
-            "refresh_schedule": f.refresh_schedule,
-            "source_system": f.source_system,
-            "upstream_dependencies": list(f.upstream_dependencies),
         }
 
     # Build schema dict if present (AI-readable metadata)
@@ -1426,7 +1401,6 @@ async def describe_moniker(
         tags=list(result.node.tags) if result.node else [],
         data_quality=data_quality,
         sla=sla,
-        freshness=freshness,
         schema=schema,
         documentation=documentation,
         models=models_list,
@@ -2057,24 +2031,12 @@ async def get_metadata(
             "max_rows_block": ap.max_rows_block,
         }
 
-    # Build temporal coverage from freshness info
-    temporal_coverage = None
-    if node and node.freshness:
-        f = node.freshness
-        temporal_coverage = {
-            "last_loaded": f.last_loaded,
-            "refresh_schedule": f.refresh_schedule,
-            "source_system": f.source_system,
-            "upstream_dependencies": list(f.upstream_dependencies) if f.upstream_dependencies else [],
-        }
-
     # Build relationships from schema related_monikers
     relationships = None
     if node and node.data_schema:
         ds = node.data_schema
         relationships = {
             "related_monikers": list(ds.related_monikers) if ds.related_monikers else [],
-            "upstream_dependencies": list(node.freshness.upstream_dependencies) if node.freshness and node.freshness.upstream_dependencies else [],
             "foreign_keys": [
                 {"column": col.name, "references": col.foreign_key}
                 for col in ds.columns if col.foreign_key

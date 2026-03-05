@@ -11,7 +11,7 @@ import yaml
 from .registry import CatalogRegistry
 from .types import (
     AccessPolicy, CatalogNode, ColumnSchema, DataQuality, DataSchema,
-    Documentation, Freshness, NodeStatus, Ownership, QueryCacheConfig, SLA,
+    Documentation, NodeStatus, Ownership, QueryCacheConfig, SLA,
     SourceBinding, SourceType,
 )
 
@@ -143,21 +143,9 @@ class CatalogLoader:
         if "sla" in data:
             sla_data = data["sla"]
             sla = SLA(
-                freshness=sla_data.get("freshness"),
                 availability=sla_data.get("availability"),
                 support_hours=sla_data.get("support_hours"),
                 escalation_contact=sla_data.get("escalation_contact"),
-            )
-
-        # Parse freshness
-        freshness = None
-        if "freshness" in data:
-            fresh_data = data["freshness"]
-            freshness = Freshness(
-                last_loaded=fresh_data.get("last_loaded"),
-                refresh_schedule=fresh_data.get("refresh_schedule"),
-                source_system=fresh_data.get("source_system"),
-                upstream_dependencies=tuple(fresh_data.get("upstream_dependencies", [])),
             )
 
         # Parse data schema (AI-readable metadata)
@@ -243,7 +231,6 @@ class CatalogLoader:
             source_binding=source_binding,
             data_quality=data_quality,
             sla=sla,
-            freshness=freshness,
             data_schema=data_schema,
             access_policy=access_policy,
             documentation=documentation,

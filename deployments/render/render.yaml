@@ -1,0 +1,90 @@
+services:
+  # Java Resolver - High-performance data plane
+  - type: web
+    name: moniker-resolver-java
+    runtime: docker
+    dockerfilePath: ./deployments/render/Dockerfile.java
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 8054
+      - key: CONFIG_FILE
+        value: /app/config.yaml
+      - key: CATALOG_FILE
+        value: /app/catalog.yaml
+      - key: TELEMETRY_ENABLED
+        value: true
+      - key: TELEMETRY_SINK_TYPE
+        value: postgres
+      - key: TELEMETRY_DB_HOST
+        fromDatabase:
+          name: moniker-telemetry
+          property: host
+      - key: TELEMETRY_DB_PORT
+        fromDatabase:
+          name: moniker-telemetry
+          property: port
+      - key: TELEMETRY_DB_NAME
+        fromDatabase:
+          name: moniker-telemetry
+          property: database
+      - key: TELEMETRY_DB_USER
+        fromDatabase:
+          name: moniker-telemetry
+          property: user
+      - key: TELEMETRY_DB_PASSWORD
+        fromDatabase:
+          name: moniker-telemetry
+          property: password
+      - key: RESOLVER_NAME
+        value: render-resolver
+      - key: AWS_REGION
+        value: render
+      - key: AWS_AZ
+        value: render-cloud
+    healthCheckPath: /health
+
+  # Python Management - Control plane
+  - type: web
+    name: moniker-admin
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn moniker_svc.management_app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHONPATH
+        value: src
+      - key: PORT
+        value: 8052
+      - key: CONFIG_FILE
+        value: ./config.yaml
+      - key: CATALOG_FILE
+        value: ./catalog.yaml
+      - key: TELEMETRY_DB_TYPE
+        value: postgres
+      - key: TELEMETRY_DB_HOST
+        fromDatabase:
+          name: moniker-telemetry
+          property: host
+      - key: TELEMETRY_DB_PORT
+        fromDatabase:
+          name: moniker-telemetry
+          property: port
+      - key: TELEMETRY_DB_NAME
+        fromDatabase:
+          name: moniker-telemetry
+          property: database
+      - key: TELEMETRY_DB_USER
+        fromDatabase:
+          name: moniker-telemetry
+          property: user
+      - key: TELEMETRY_DB_PASSWORD
+        fromDatabase:
+          name: moniker-telemetry
+          property: password
+    healthCheckPath: /health
+
+databases:
+  - name: moniker-telemetry
+    databaseName: moniker_telemetry
+    user: moniker
+    plan: starter

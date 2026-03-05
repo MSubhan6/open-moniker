@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-admin
+  namespace: moniker
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        region: us-east-1
+    spec:
+      containers:
+      - name: admin
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/moniker-admin-python:latest
+        env:
+        - name: AWS_REGION
+          value: us-east-1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1a  # Admin runs in single AZ
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: moniker-admin
+  namespace: moniker
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/moniker-admin-us-east-1

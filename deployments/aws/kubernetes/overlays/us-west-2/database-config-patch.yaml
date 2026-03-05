@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  namespace: moniker
+data:
+  # Replace with Aurora reader endpoint for us-west-2
+  telemetry_host: ${AURORA_READER_ENDPOINT}
+  telemetry_port: "5432"
+  telemetry_database: moniker_telemetry
+  telemetry_user: telemetry

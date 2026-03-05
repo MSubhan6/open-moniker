@@ -6,7 +6,7 @@ from typing import Any
 
 from .types import (
     AccessPolicy, CatalogNode, ColumnSchema, DataQuality, DataSchema,
-    Documentation, Freshness, Ownership, SLA, SourceBinding,
+    Documentation, Ownership, SLA, SourceBinding,
 )
 
 
@@ -46,11 +46,6 @@ class CatalogSerializer:
             sla = self.serialize_sla(node.sla)
             if sla:
                 result["sla"] = sla
-
-        if node.freshness:
-            fresh = self.serialize_freshness(node.freshness)
-            if fresh:
-                result["freshness"] = fresh
 
         if node.data_schema:
             schema = self.serialize_data_schema(node.data_schema)
@@ -136,29 +131,12 @@ class CatalogSerializer:
         """Serialize SLA, omitting empty fields."""
         result: dict[str, Any] = {}
 
-        if sla.freshness:
-            result["freshness"] = sla.freshness
         if sla.availability:
             result["availability"] = sla.availability
         if sla.support_hours:
             result["support_hours"] = sla.support_hours
         if sla.escalation_contact:
             result["escalation_contact"] = sla.escalation_contact
-
-        return result
-
-    def serialize_freshness(self, freshness: Freshness) -> dict[str, Any]:
-        """Serialize Freshness, omitting empty fields."""
-        result: dict[str, Any] = {}
-
-        if freshness.last_loaded:
-            result["last_loaded"] = freshness.last_loaded
-        if freshness.refresh_schedule:
-            result["refresh_schedule"] = freshness.refresh_schedule
-        if freshness.source_system:
-            result["source_system"] = freshness.source_system
-        if freshness.upstream_dependencies:
-            result["upstream_dependencies"] = list(freshness.upstream_dependencies)
 
         return result
 

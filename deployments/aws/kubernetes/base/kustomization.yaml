@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: moniker
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - java-resolver.yaml
+  - python-admin.yaml
+
+commonLabels:
+  app.kubernetes.io/name: moniker
+  app.kubernetes.io/part-of: moniker-service
+
+# Add common annotations
+commonAnnotations:
+  managed-by: kustomize

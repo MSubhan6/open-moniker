@@ -307,7 +307,6 @@ class CatalogNode:
     # Data governance
     data_quality: DataQuality | None = None
     sla: SLA | None = None
-    freshness: Freshness | None = None
 
     # Machine-readable schema for AI agent discoverability
     data_schema: DataSchema | None = None
@@ -434,9 +433,6 @@ class DataQuality:
 @dataclass(frozen=True, slots=True)
 class SLA:
     """Service level agreement for a data source."""
-    # Expected freshness (e.g., "T+1", "15min", "real-time")
-    freshness: str | None = None
-
     # Availability target (e.g., "99.9%")
     availability: str | None = None
 
@@ -445,22 +441,6 @@ class SLA:
 
     # Escalation contact for SLA breaches
     escalation_contact: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class Freshness:
-    """Data freshness information."""
-    # When the data was last loaded/refreshed (ISO format)
-    last_loaded: str | None = None
-
-    # Scheduled refresh time (e.g., "06:00 ET daily")
-    refresh_schedule: str | None = None
-
-    # Source system the data comes from
-    source_system: str | None = None
-
-    # Upstream dependencies
-    upstream_dependencies: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

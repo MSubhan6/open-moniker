@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-resolver
+  namespace: moniker
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        region: us-west-2
+    spec:
+      containers:
+      - name: resolver
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/moniker-resolver-java:latest
+        env:
+        - name: AWS_REGION
+          value: us-west-2
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-west-2a
+                - us-west-2b
+                - us-west-2c
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - moniker-resolver
+            topologyKey: topology.kubernetes.io/zone
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: moniker-resolver
+  namespace: moniker
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/moniker-resolver-us-west-2

@@ -1,0 +1,171 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-admin-config
+  namespace: moniker
+data:
+  config.yaml: |
+    project_name: "Open Moniker Service"
+    catalog_path: /config/catalog.yaml
+    domains_path: /config/domains.yaml
+    models_path: /config/models.yaml
+    requests_path: /config/requests.yaml
+    reload_interval_seconds: 60
+    telemetry_db:
+      type: postgres
+      host: ${TELEMETRY_DB_HOST}
+      port: 5432
+      database: moniker_telemetry
+      user: ${TELEMETRY_DB_USER}
+      password: ${TELEMETRY_DB_PASSWORD}
+      pool_size: 10
+      pool_timeout: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-admin
+  namespace: moniker
+  labels:
+    app: moniker-admin
+    language: python
+    component: management
+spec:
+  replicas: 1  # Admin runs single instance per region
+  strategy:
+    type: Recreate  # Prevent dual writes to config files
+  selector:
+    matchLabels:
+      app: moniker-admin
+      language: python
+  template:
+    metadata:
+      labels:
+        app: moniker-admin
+        language: python
+        component: management
+    spec:
+      serviceAccountName: moniker-admin
+      containers:
+      - name: admin
+        image: PLACEHOLDER_IMAGE  # Override in overlays
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8052
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: /config/config.yaml
+        - name: CATALOG_PATH
+          value: /config/catalog.yaml
+        - name: DOMAINS_PATH
+          value: /config/domains.yaml
+        - name: MODELS_PATH
+          value: /config/models.yaml
+        - name: REQUESTS_PATH
+          value: /config/requests.yaml
+        - name: TELEMETRY_DB_TYPE
+          value: postgres
+        - name: TELEMETRY_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: telemetry_host
+        - name: TELEMETRY_DB_PORT
+          value: "5432"
+        - name: TELEMETRY_DB_NAME
+          value: moniker_telemetry
+        - name: TELEMETRY_DB_USER
+          value: telemetry
+        - name: TELEMETRY_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secrets
+              key: telemetry_password
+        - name: AWS_REGION
+          value: PLACEHOLDER_REGION  # Override in overlays
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: app-config
+          mountPath: /app/config
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: moniker-config-pvc
+      - name: app-config
+        configMap:
+          name: python-admin-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-admin
+  namespace: moniker
+  labels:
+    app: moniker-admin
+    language: python
+spec:
+  type: LoadBalancer
+  selector:
+    app: moniker-admin
+    language: python
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: moniker-admin
+  namespace: moniker
+  annotations:
+    eks.amazonaws.com/role-arn: PLACEHOLDER_ROLE_ARN  # Override in overlays
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moniker-config-pvc
+  namespace: moniker
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 1Gi

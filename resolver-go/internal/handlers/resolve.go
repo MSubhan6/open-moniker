@@ -65,7 +65,16 @@ func (h *DescribeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.Describe(r.Context(), path)
+	// Get caller identity
+	caller := &service.CallerIdentity{
+		UserID: r.Header.Get("X-User-ID"),
+		Source: "api",
+	}
+	if caller.UserID == "" {
+		caller.UserID = "anonymous"
+	}
+
+	result, err := h.service.Describe(r.Context(), path, caller)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -89,7 +98,16 @@ func (h *ListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/list/")
 	// Empty path means list root
 
-	result, err := h.service.List(r.Context(), path)
+	// Get caller identity
+	caller := &service.CallerIdentity{
+		UserID: r.Header.Get("X-User-ID"),
+		Source: "api",
+	}
+	if caller.UserID == "" {
+		caller.UserID = "anonymous"
+	}
+
+	result, err := h.service.List(r.Context(), path, caller)
 	if err != nil {
 		handleServiceError(w, err)
 		return

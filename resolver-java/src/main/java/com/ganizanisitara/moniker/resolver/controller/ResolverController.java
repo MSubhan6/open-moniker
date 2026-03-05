@@ -3,6 +3,9 @@ package com.ganizanisitara.moniker.resolver.controller;
 import com.ganizanisitara.moniker.resolver.catalog.CatalogNode;
 import com.ganizanisitara.moniker.resolver.catalog.CatalogRegistry;
 import com.ganizanisitara.moniker.resolver.service.*;
+import com.ganizanisitara.moniker.resolver.telemetry.CallerIdentity;
+import com.ganizanisitara.moniker.resolver.telemetry.TelemetryHelper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +21,15 @@ public class ResolverController {
 
     private final MonikerService monikerService;
     private final CatalogRegistry catalog;
+    private final TelemetryHelper telemetry;
     private final String projectName;
 
     public ResolverController(MonikerService monikerService, CatalogRegistry catalog,
+                            TelemetryHelper telemetry,
                             @Value("${moniker.project-name:Open Moniker}") String projectName) {
         this.monikerService = monikerService;
         this.catalog = catalog;
+        this.telemetry = telemetry;
         this.projectName = projectName;
     }
 
@@ -62,7 +68,8 @@ public class ResolverController {
     @GetMapping("/resolve/{path:.*}")
     public ResponseEntity<?> resolve(@PathVariable String path,
                                      @RequestParam(required = false) String namespace,
-                                     @RequestParam(required = false) String version) {
+                                     @RequestParam(required = false) String version,
+                                     HttpServletRequest request) {
         try {
             // Build full moniker string
             StringBuilder moniker = new StringBuilder();
@@ -74,7 +81,8 @@ public class ResolverController {
                 moniker.append("@").append(version);
             }
 
-            ResolveResult result = monikerService.resolve(moniker.toString());
+            CallerIdentity caller = telemetry.extractCallerIdentity(request);
+            ResolveResult result = monikerService.resolve(moniker.toString(), caller);
             return ResponseEntity.ok(result);
 
         } catch (ResolutionException e) {
@@ -93,9 +101,10 @@ public class ResolverController {
      * Describe a catalog node.
      */
     @GetMapping("/describe/{path:.*}")
-    public ResponseEntity<?> describe(@PathVariable String path) {
+    public ResponseEntity<?> describe(@PathVariable String path, HttpServletRequest request) {
         try {
-            DescribeResult result = monikerService.describe(path);
+            CallerIdentity caller = telemetry.extractCallerIdentity(request);
+            DescribeResult result = monikerService.describe(path, caller);
             return ResponseEntity.ok(result);
 
         } catch (ResolutionException e) {
@@ -114,9 +123,10 @@ public class ResolverController {
      * List children of a path.
      */
     @GetMapping("/list/{path:.*}")
-    public ResponseEntity<?> listChildren(@PathVariable String path) {
+    public ResponseEntity<?> listChildren(@PathVariable String path, HttpServletRequest request) {
         try {
-            List<String> children = monikerService.listChildren(path);
+            CallerIdentity caller = telemetry.extractCallerIdentity(request);
+            List<String> children = monikerService.listChildren(path, caller);
 
             Map<String, Object> response = new HashMap<>();
             response.put("path", path);
@@ -137,9 +147,10 @@ public class ResolverController {
      * Get lineage (ancestor chain) for a path.
      */
     @GetMapping("/lineage/{path:.*}")
-    public ResponseEntity<?> lineage(@PathVariable String path) {
+    public ResponseEntity<?> lineage(@PathVariable String path, HttpServletRequest request) {
         try {
-            List<Map<String, Object>> lineage = monikerService.getLineage(path);
+            CallerIdentity caller = telemetry.extractCallerIdentity(request);
+            List<Map<String, Object>> lineage = monikerService.getLineage(path, caller);
 
             Map<String, Object> response = new HashMap<>();
             response.put("path", path);

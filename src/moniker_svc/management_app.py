@@ -39,6 +39,8 @@ from .domains import routes as domain_routes
 from .models import routes as model_routes
 from .requests import routes as request_routes
 from .dashboard import routes as dashboard_routes
+from .telemetry import db as telemetry_db
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +102,29 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Dashboard enabled")
 
+    # Initialize telemetry database
+    db_type = os.environ.get("TELEMETRY_DB_TYPE", "sqlite")
+    if db_type.lower() == "sqlite":
+        db_path = os.environ.get("TELEMETRY_DB_PATH", "./telemetry.db")
+        await telemetry_db.initialize("sqlite", db_path=db_path)
+    else:
+        # PostgreSQL
+        await telemetry_db.initialize(
+            "postgres",
+            host=os.environ.get("TELEMETRY_DB_HOST", "localhost"),
+            port=int(os.environ.get("TELEMETRY_DB_PORT", "5432")),
+            database=os.environ.get("TELEMETRY_DB_NAME", "moniker_telemetry"),
+            user=os.environ.get("TELEMETRY_DB_USER", "telemetry"),
+            password=os.environ.get("TELEMETRY_DB_PASSWORD", ""),
+            pool_size=int(os.environ.get("TELEMETRY_DB_POOL_SIZE", "10")),
+        )
+    logger.info(f"Telemetry database initialized ({db_type})")
+
     logger.info("Management service started")
     yield
 
+    # Cleanup
+    await telemetry_db.close()
     logger.info("Management service stopped")
 
 
@@ -130,6 +152,11 @@ _static_dir = Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
+# Dashboard static files (dashboard.html, dashboard.js)
+_dashboard_static_dir = Path(__file__).parent / "dashboard" / "static"
+if _dashboard_static_dir.exists():
+    app.mount("/dashboard/static", StaticFiles(directory=_dashboard_static_dir), name="dashboard-static")
+
 # Management sub-routers
 app.include_router(config_ui_routes.router)
 app.include_router(domain_routes.router)
@@ -143,6 +170,16 @@ app.include_router(dashboard_routes.router)
 # ---------------------------------------------------------------------------
 
 from fastapi import Request  # noqa: E402  (after app definition for clarity)
+
+
+@app.get("/health", tags=["Health"])
+async def health(request: Request):
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "management",
+        "project": request.app.state.config.project_name,
+    }
 
 
 @app.get("/", response_class=HTMLResponse, tags=["Health"])
@@ -287,6 +324,11 @@ async def root(request: Request):
     <div class="container">
         <h3 class="section-title">Administration</h3>
         <div class="grid">
+            <div class="card">
+                <h2>Dashboard</h2>
+                <p>View catalog statistics, request queue, and live telemetry from resolver instances.</p>
+                <a href="/dashboard">Open Dashboard</a>
+            </div>
             <div class="card">
                 <h2>Domain Configuration</h2>
                 <p>Manage data domains with governance metadata: ownership, confidentiality, PII flags.</p>

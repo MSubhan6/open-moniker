@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: moniker
+  labels:
+    name: moniker
+    environment: PLACEHOLDER_ENVIRONMENT

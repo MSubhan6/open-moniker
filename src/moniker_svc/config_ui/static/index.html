@@ -1700,10 +1700,6 @@
                     <div class="section-content">
                         <div class="form-grid">
                             <div class="form-row">
-                                <label for="sla_freshness">Freshness</label>
-                                <input type="text" id="sla_freshness" placeholder="e.g., T+1, 15min, real-time" value="${escapeHtml(node.sla?.freshness || '')}">
-                            </div>
-                            <div class="form-row">
                                 <label for="sla_availability">Availability</label>
                                 <input type="text" id="sla_availability" placeholder="e.g., 99.9%" value="${escapeHtml(node.sla?.availability || '')}">
                             </div>
@@ -2146,7 +2142,6 @@
 
             // SLA
             const sla = {};
-            if (document.getElementById('sla_freshness')?.value) sla.freshness = document.getElementById('sla_freshness').value;
             if (document.getElementById('sla_availability')?.value) sla.availability = document.getElementById('sla_availability').value;
             if (document.getElementById('sla_support_hours')?.value) sla.support_hours = document.getElementById('sla_support_hours').value;
             if (document.getElementById('sla_escalation')?.value) sla.escalation_contact = document.getElementById('sla_escalation').value;

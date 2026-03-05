@@ -1,0 +1,31 @@
+server:
+  host: "0.0.0.0"
+  port: 8050
+
+telemetry:
+  enabled: true
+  sink_type: console
+  sink_config:
+    format: compact
+  batch_size: 1000
+  flush_interval_seconds: 1.0
+  max_queue_size: 10000
+
+cache:
+  enabled: true
+  max_size: 10000
+  default_ttl_seconds: 60   # 1 minute — safe day-1 default; raise once stable
+
+catalog:
+  definition_file: "./sample_catalog.yaml"
+  reload_interval_seconds: 60
+
+auth:
+  enabled: false
+  enforce: false
+  method_order: [kerberos, jwt]
+
+config_ui:
+  enabled: true
+  yaml_output_path: "catalog_output.yaml"
+  show_file_paths: false

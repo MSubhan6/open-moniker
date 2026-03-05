@@ -1,12 +1,5 @@
-"""Telemetry system - non-blocking usage event streaming."""
+"""Telemetry module for Open Moniker."""
 
-from .events import UsageEvent, EventOutcome
-from .emitter import TelemetryEmitter
-from .batcher import TelemetryBatcher
+from . import db
 
-__all__ = [
-    "UsageEvent",
-    "EventOutcome",
-    "TelemetryEmitter",
-    "TelemetryBatcher",
-]
+__all__ = ["db"]

@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: moniker
+
+bases:
+  - ../../base
+
+namePrefix: usw2-
+
+commonLabels:
+  region: us-west-2
+  environment: production
+
+# Patch deployments for us-west-2
+patchesStrategicMerge:
+  - java-resolver-patch.yaml
+  - python-admin-patch.yaml
+  - database-config-patch.yaml
+  - secrets-patch.yaml
+
+# Set replicas for us-west-2 (3 resolvers across 3 AZs)
+replicas:
+  - name: java-resolver
+    count: 3
+
+images:
+  - name: PLACEHOLDER_IMAGE
+    newName: ${AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/moniker-resolver-java
+    newTag: latest
+
+configMapGenerator:
+  - name: region-config
+    literals:
+      - AWS_REGION=us-west-2
+      - CLUSTER_NAME=moniker-us-west-2

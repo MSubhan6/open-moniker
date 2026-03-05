@@ -41,6 +41,32 @@ moniker:
   config-file: ${CONFIG_FILE:../config.yaml}
   catalog-file: ${CATALOG_FILE:../catalog.yaml}
 
+  # Resolver identity (for telemetry)
+  resolver-name: ${RESOLVER_NAME:local-dev}
+  region: ${AWS_REGION:local}
+  az: ${AWS_AZ:local}
+
+  # Telemetry configuration
+  telemetry:
+    enabled: ${TELEMETRY_ENABLED:false}
+    sink-type: ${TELEMETRY_SINK_TYPE:console}  # console, sqlite, postgres
+    batch-size: ${TELEMETRY_BATCH_SIZE:100}
+    flush-interval-seconds: ${TELEMETRY_FLUSH_INTERVAL:5.0}
+    max-queue-size: ${TELEMETRY_MAX_QUEUE_SIZE:10000}
+
+    # Sink-specific configuration
+    sink-config:
+      # SQLite configuration (local development)
+      db-path: ${TELEMETRY_DB_PATH:./telemetry.db}
+
+      # PostgreSQL configuration (production)
+      host: ${TELEMETRY_DB_HOST:localhost}
+      port: ${TELEMETRY_DB_PORT:5432}
+      database: ${TELEMETRY_DB_NAME:moniker_telemetry}
+      username: ${TELEMETRY_DB_USER:telemetry}
+      password: ${TELEMETRY_DB_PASSWORD:}
+      pool-size: ${TELEMETRY_DB_POOL_SIZE:10}
+
 # Logging
 logging:
   level:

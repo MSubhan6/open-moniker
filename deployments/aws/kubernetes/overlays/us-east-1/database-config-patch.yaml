@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  namespace: moniker
+data:
+  # Replace with actual Aurora endpoint from Terraform outputs
+  telemetry_host: ${AURORA_CLUSTER_ENDPOINT}
+  telemetry_port: "5432"
+  telemetry_database: moniker_telemetry
+  telemetry_user: telemetry

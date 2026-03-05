@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moniker-catalog
+  namespace: moniker
+data:
+  catalog.yaml: |
+    # This is a placeholder - replace with actual catalog content
+    # In production, this would be populated from your sample_catalog.yaml
+    # or synced from your config management system
+    nodes:
+      test/path@latest:
+        domain: test
+        identifier: path
+        version: latest
+        source_type: oracle
+        connection_string: "oracle://test"
+
+  domains.yaml: |
+    # Placeholder domains configuration
+    domains:
+      test:
+        description: "Test domain"
+        owner: "admin"
+
+  models.yaml: |
+    # Placeholder models configuration
+    models: []
+
+  requests.yaml: |
+    # Placeholder requests configuration
+    requests: []
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  namespace: moniker
+data:
+  telemetry_host: PLACEHOLDER_DB_HOST  # Override in overlays
+  telemetry_port: "5432"
+  telemetry_database: moniker_telemetry
+  telemetry_user: telemetry

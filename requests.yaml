@@ -1,0 +1,339 @@
+requests:
+- request_id: REQ-0001
+  path: risk/stress/climate
+  display_name: Climate Stress Scenarios
+  description: Forward-looking climate risk stress test scenarios (NGFS aligned)
+  justification: Regulatory requirement — ECB climate stress test submission due Q3
+  status: pending_review
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.060946+00:00'
+  updated_at: '2026-02-13T14:02:53.066793+00:00'
+  requester:
+    name: Priya Sharma
+    email: priya.sharma@firm.com
+    team: Risk Analytics
+    app_id: stress-engine
+  adop: michael.chen@firm.com
+  ads: risk-data-team@firm.com
+  adop_name: Michael Chen
+  ads_name: Risk Data Team
+  source_binding_type: snowflake
+  source_binding_config:
+    account: firm.eu-west-1
+    warehouse: RISK_WH
+    database: STRESS_SCENARIOS
+    schema: CLIMATE
+  tags:
+  - stress-testing
+  - climate
+  - regulatory
+  - NGFS
+  comments:
+  - timestamp: '2026-02-13T14:02:53.063925+00:00'
+    author: compliance@firm.com
+    author_name: Compliance Team
+    content: Please confirm this aligns with the NGFS Phase IV scenarios.
+    action: comment
+  - timestamp: '2026-02-13T14:02:53.066784+00:00'
+    author: priya.sharma@firm.com
+    author_name: Priya Sharma
+    content: Confirmed — using NGFS Net Zero 2050 and Delayed Transition scenarios.
+    action: comment
+- request_id: REQ-0002
+  path: portfolios/attribution/fixed-income
+  display_name: FI Performance Attribution
+  description: Fixed income portfolio attribution by sector, duration bucket, and
+    curve effect
+  justification: PM desk needs daily attribution breakdowns for client reporting
+  status: pending_review
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.120643+00:00'
+  updated_at: '2026-02-13T14:02:53.120643+00:00'
+  requester:
+    name: James Wilson
+    email: james.wilson@firm.com
+    team: Portfolio Management
+    app_id: pm-dashboard
+  adop: sarah.brooks@firm.com
+  ads: quant-team@firm.com
+  adal: james.wilson@firm.com
+  adop_name: Sarah Brooks
+  ads_name: Quant Analytics
+  adal_name: James Wilson
+  source_binding_type: mssql
+  source_binding_config:
+    server: sqlprod-pm.firm.internal
+    database: PortfolioAnalytics
+    schema: Attribution
+  tags:
+  - attribution
+  - fixed-income
+  - portfolio-management
+- request_id: REQ-0003
+  path: prices/derivatives/swaptions
+  display_name: Swaption Volatility Surface
+  description: Swaption implied volatility surface (expiry x tenor) from Bloomberg
+  justification: Rates desk needs vol surface for swaption pricing and risk
+  status: pending_review
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.175754+00:00'
+  updated_at: '2026-02-13T14:02:53.180768+00:00'
+  requester:
+    name: David Park
+    email: david.park@firm.com
+    team: Rates Trading
+    app_id: rates-pricer
+  adop: trading-head@firm.com
+  ads: market-data-ops@firm.com
+  adop_name: Elena Vasquez
+  ads_name: Market Data Ops
+  source_binding_type: bloomberg
+  source_binding_config:
+    fields:
+    - PX_LAST
+    - IMPLIED_VOL
+    - DELTA
+    schedule: realtime
+  tags:
+  - swaptions
+  - volatility
+  - rates
+  - derivatives
+  comments:
+  - timestamp: '2026-02-13T14:02:53.180757+00:00'
+    author: market-data-ops@firm.com
+    author_name: Market Data Ops
+    content: Bloomberg entitlement check passed. Realtime feed available on BPIPE.
+    action: comment
+- request_id: REQ-0004
+  path: reference/classifications/esg
+  display_name: ESG Classification Scores
+  description: MSCI ESG ratings and sub-scores mapped to internal security master
+  justification: New regulatory requirement for SFDR Article 8 fund disclosures
+  status: pending_review
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.237327+00:00'
+  updated_at: '2026-02-13T14:02:53.237327+00:00'
+  requester:
+    name: Anna Kowalski
+    email: anna.kowalski@firm.com
+    team: Sustainable Investing
+    app_id: esg-monitor
+  adop: anna.kowalski@firm.com
+  ads: ref-data-team@firm.com
+  adop_name: Anna Kowalski
+  ads_name: Reference Data Team
+  source_binding_type: rest
+  source_binding_config:
+    base_url: https://api.msci-esg.example.com/v2
+    auth: oauth2
+    rate_limit: 1000/hour
+  tags:
+  - ESG
+  - SFDR
+  - classifications
+  - regulatory
+- request_id: REQ-0005
+  path: alternatives
+  display_name: Alternative Investments
+  description: Top-level domain for private equity, real estate, hedge fund, and infrastructure
+    data
+  justification: Firm expanding into alternatives — need dedicated namespace for PE/RE/HF
+    data
+  status: pending_review
+  domain_level: top_level
+  created_at: '2026-02-13T14:02:53.294469+00:00'
+  updated_at: '2026-02-13T14:02:53.307512+00:00'
+  requester:
+    name: Robert Zhang
+    email: robert.zhang@firm.com
+    team: Alternative Investments
+    app_id: alts-platform
+  adop: robert.zhang@firm.com
+  adop_name: Robert Zhang
+  tags:
+  - alternatives
+  - private-equity
+  - real-estate
+  - hedge-funds
+  comments:
+  - timestamp: '2026-02-13T14:02:53.300875+00:00'
+    author: governance@firm.com
+    author_name: Data Governance
+    content: Top-level domain request — scheduling governance committee review for
+      Thursday.
+    action: comment
+  - timestamp: '2026-02-13T14:02:53.307503+00:00'
+    author: robert.zhang@firm.com
+    author_name: Robert Zhang
+    content: Happy to present the namespace proposal at the committee meeting.
+    action: comment
+- request_id: REQ-0006
+  path: risk/cvar/commodity
+  display_name: Commodity CVaR
+  description: Conditional Value-at-Risk for commodity portfolios (95th and 99th percentile)
+  justification: Commodity desk risk limits require daily CVaR calculations
+  status: approved
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.364784+00:00'
+  updated_at: '2026-02-13T14:02:53.381155+00:00'
+  requester:
+    name: Marcus Johnson
+    email: marcus.johnson@firm.com
+    team: Commodity Risk
+    app_id: risk-dashboard
+  adop: elena.vasquez@firm.com
+  ads: risk-data-team@firm.com
+  adop_name: Elena Vasquez
+  ads_name: Risk Data Team
+  source_binding_type: snowflake
+  source_binding_config:
+    account: firm.us-east-1
+    warehouse: RISK_WH
+    database: RISK_MODELS
+    schema: CVAR
+  tags:
+  - risk
+  - cvar
+  - commodities
+  comments:
+  - timestamp: '2026-02-13T14:02:53.372478+00:00'
+    author: risk-data-team@firm.com
+    author_name: Risk Data Team
+    content: Snowflake schema RISK_MODELS.CVAR is provisioned and tested. Good to
+      go.
+    action: comment
+  - timestamp: '2026-02-13T14:02:53.381125+00:00'
+    author: senior.reviewer@firm.com
+    author_name: Senior Reviewer
+    content: Ownership verified. Risk data team confirmed Snowflake schema is provisioned.
+    action: approve
+  reviewed_by: senior.reviewer@firm.com
+  reviewed_at: '2026-02-13T14:02:53.381143+00:00'
+- request_id: REQ-0007
+  path: rates/curves/ois
+  display_name: OIS Discount Curves
+  description: Overnight Index Swap discount curves (USD, EUR, GBP, JPY)
+  justification: Required for derivatives valuation — moving from legacy system
+  status: approved
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.441052+00:00'
+  updated_at: '2026-02-13T14:02:53.450245+00:00'
+  requester:
+    name: Lisa Chen
+    email: lisa.chen@firm.com
+    team: Quantitative Analytics
+    app_id: curve-engine
+  adop: quant-head@firm.com
+  ads: quant-team@firm.com
+  adop_name: Dr. Thomas Wright
+  ads_name: Quant Analytics
+  source_binding_type: oracle
+  source_binding_config:
+    host: oraprod-quant.firm.internal
+    service: CURVES
+    schema: OIS_DISC
+  tags:
+  - rates
+  - OIS
+  - curves
+  - derivatives
+  comments:
+  - timestamp: '2026-02-13T14:02:53.450224+00:00'
+    author: quant-head@firm.com
+    author_name: Dr. Thomas Wright
+    content: Approved — critical for derivatives migration. Oracle schema validated.
+    action: approve
+  reviewed_by: quant-head@firm.com
+  reviewed_at: '2026-02-13T14:02:53.450236+00:00'
+- request_id: REQ-0008
+  path: portfolios/holdings/client-pii
+  display_name: Client Holdings with PII
+  description: Portfolio holdings enriched with client personal information
+  justification: Client reporting team needs combined view
+  status: rejected
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.510837+00:00'
+  updated_at: '2026-02-13T14:02:53.540957+00:00'
+  requester:
+    name: Kevin O'Brien
+    email: kevin.obrien@firm.com
+    team: Client Reporting
+    app_id: client-reports
+  adop: kevin.obrien@firm.com
+  adop_name: Kevin O'Brien
+  source_binding_type: mssql
+  source_binding_config:
+    server: sqlprod-clients.firm.internal
+    database: ClientData
+  tags:
+  - holdings
+  - client-data
+  - PII
+  comments:
+  - timestamp: '2026-02-13T14:02:53.520882+00:00'
+    author: dpo@firm.com
+    author_name: Data Protection Officer
+    content: This would violate our data classification policy. PII must be in a separate
+      restricted namespace.
+    action: comment
+  - timestamp: '2026-02-13T14:02:53.530580+00:00'
+    author: compliance@firm.com
+    author_name: Compliance Team
+    content: Agreed with DPO. Please resubmit with PII removed, or request a restricted
+      namespace first.
+    action: comment
+  - timestamp: '2026-02-13T14:02:53.540938+00:00'
+    author: compliance@firm.com
+    author_name: Compliance Team
+    content: 'Rejected: PII data cannot be co-located with holdings in a shared moniker.
+      Please separate PII into a restricted-access moniker under a dedicated PII namespace
+      with appropriate access controls.'
+    action: reject
+  reviewed_by: compliance@firm.com
+  reviewed_at: '2026-02-13T14:02:53.540949+00:00'
+  rejection_reason: 'Rejected: PII data cannot be co-located with holdings in a shared
+    moniker. Please separate PII into a restricted-access moniker under a dedicated
+    PII namespace with appropriate access controls.'
+- request_id: REQ-0009
+  path: prices/equity/dark-pool
+  display_name: Dark Pool Equity Prices
+  description: Off-exchange dark pool execution prices
+  justification: Algo trading desk wants consolidated dark pool price feed
+  status: rejected
+  domain_level: sub_path
+  created_at: '2026-02-13T14:02:53.604118+00:00'
+  updated_at: '2026-02-13T14:02:53.626480+00:00'
+  requester:
+    name: Tom Harris
+    email: tom.harris@firm.com
+    team: Electronic Trading
+    app_id: algo-engine
+  adop: trading-head@firm.com
+  adop_name: Elena Vasquez
+  source_binding_type: rest
+  source_binding_config:
+    base_url: https://darkpool-feed.internal/v1
+  tags:
+  - dark-pool
+  - equity
+  - trading
+  comments:
+  - timestamp: '2026-02-13T14:02:53.615476+00:00'
+    author: legal@firm.com
+    author_name: Legal Team
+    content: MiFID II Article 5 implications need assessment before we can host this
+      data.
+    action: comment
+  - timestamp: '2026-02-13T14:02:53.626464+00:00'
+    author: market-data-ops@firm.com
+    author_name: Market Data Ops
+    content: Dark pool pricing data is governed under MiFID II transparency rules.
+      Requires legal review before onboarding. Please route through Legal/Compliance
+      first.
+    action: reject
+  reviewed_by: market-data-ops@firm.com
+  reviewed_at: '2026-02-13T14:02:53.626472+00:00'
+  rejection_reason: Dark pool pricing data is governed under MiFID II transparency
+    rules. Requires legal review before onboarding. Please route through Legal/Compliance
+    first.

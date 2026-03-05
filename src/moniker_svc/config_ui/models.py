@@ -83,22 +83,9 @@ class DataQualityModel(BaseModel):
 
 class SLAModel(BaseModel):
     """Mutable SLA model."""
-    freshness: str | None = None
     availability: str | None = None
     support_hours: str | None = None
     escalation_contact: str | None = None
-
-
-# =============================================================================
-# Freshness Models
-# =============================================================================
-
-class FreshnessModel(BaseModel):
-    """Mutable freshness model."""
-    last_loaded: str | None = None
-    refresh_schedule: str | None = None
-    source_system: str | None = None
-    upstream_dependencies: list[str] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -183,7 +170,6 @@ class CatalogNodeModel(BaseModel):
     source_binding: SourceBindingModel | None = None
     data_quality: DataQualityModel | None = None
     sla: SLAModel | None = None
-    freshness: FreshnessModel | None = None
     data_schema: DataSchemaModel | None = Field(default=None, alias="schema")
     access_policy: AccessPolicyModel | None = None
     documentation: DocumentationModel | None = None
@@ -216,7 +202,6 @@ class CreateNodeRequest(BaseModel):
     source_binding: SourceBindingModel | None = None
     data_quality: DataQualityModel | None = None
     sla: SLAModel | None = None
-    freshness: FreshnessModel | None = None
     data_schema: DataSchemaModel | None = Field(default=None, alias="schema")
     access_policy: AccessPolicyModel | None = None
     documentation: DocumentationModel | None = None
@@ -236,7 +221,6 @@ class UpdateNodeRequest(BaseModel):
     source_binding: SourceBindingModel | None = None
     data_quality: DataQualityModel | None = None
     sla: SLAModel | None = None
-    freshness: FreshnessModel | None = None
     data_schema: DataSchemaModel | None = Field(default=None, alias="schema")
     access_policy: AccessPolicyModel | None = None
     documentation: DocumentationModel | None = None

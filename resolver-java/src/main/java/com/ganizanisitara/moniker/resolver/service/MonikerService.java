@@ -4,6 +4,7 @@ import com.ganizanisitara.moniker.resolver.catalog.*;
 import com.ganizanisitara.moniker.resolver.moniker.Moniker;
 import com.ganizanisitara.moniker.resolver.moniker.MonikerParser;
 import com.ganizanisitara.moniker.resolver.moniker.MonikerParseException;
+import com.ganizanisitara.moniker.resolver.telemetry.*;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -16,30 +17,46 @@ public class MonikerService {
     private static final int MAX_SUCCESSOR_DEPTH = 5;
 
     private final CatalogRegistry catalog;
+    private final TelemetryHelper telemetry;
 
-    public MonikerService(CatalogRegistry catalog) {
+    public MonikerService(CatalogRegistry catalog, TelemetryHelper telemetry) {
         this.catalog = catalog;
+        this.telemetry = telemetry;
     }
 
     /**
      * Resolve a moniker string to a source binding.
      */
-    public ResolveResult resolve(String monikerStr) throws ResolutionException {
-        // Parse moniker
-        Moniker moniker;
+    public ResolveResult resolve(String monikerStr, CallerIdentity caller) throws ResolutionException {
+        long startTime = System.currentTimeMillis();
+        UsageEvent.UsageEventBuilder eventBuilder = telemetry.createEventBuilder(
+            Operation.READ,
+            monikerStr,
+            caller
+        );
+
         try {
-            moniker = MonikerParser.parseMoniker(monikerStr);
-        } catch (MonikerParseException e) {
-            throw new ResolutionException("Invalid moniker: " + e.getMessage(), 400);
-        }
+            // Parse moniker
+            Moniker moniker;
+            try {
+                moniker = MonikerParser.parseMoniker(monikerStr);
+            } catch (MonikerParseException e) {
+                emitTelemetry(eventBuilder, startTime, 400, EventOutcome.VALIDATION_ERROR, "ParseError", e.getMessage());
+                throw new ResolutionException("Invalid moniker: " + e.getMessage(), 400);
+            }
 
-        // Find the catalog node with source binding
-        String path = moniker.getPath().toString();
-        CatalogNode node = catalog.findSourceBinding(path);
+            // Find the catalog node with source binding
+            String path = moniker.getPath().toString();
+            eventBuilder.path(path)
+                .namespace(moniker.getNamespace())
+                .version(moniker.getVersion());
 
-        if (node == null) {
-            throw new ResolutionException("No source binding found for path: " + path, 404);
-        }
+            CatalogNode node = catalog.findSourceBinding(path);
+
+            if (node == null) {
+                emitTelemetry(eventBuilder, startTime, 404, EventOutcome.NOT_FOUND, null, null);
+                throw new ResolutionException("No source binding found for path: " + path, 404);
+            }
 
         // Follow successor chain if node is deprecated
         int successorDepth = 0;
@@ -110,17 +127,40 @@ public class MonikerService {
             result.setSuccessor(node.getSuccessor());
         }
 
+        // Emit success telemetry
+        if (binding != null) {
+            eventBuilder.sourceType(binding.getType().toString());
+        }
+        emitTelemetry(eventBuilder, startTime, 200, EventOutcome.SUCCESS, null, null);
+
         return result;
+
+        } catch (ResolutionException e) {
+            // Already emitted telemetry in catch blocks above
+            throw e;
+        } catch (Exception e) {
+            emitTelemetry(eventBuilder, startTime, 500, EventOutcome.ERROR, "InternalError", e.getMessage());
+            throw e;
+        }
     }
 
     /**
      * Describe a catalog node.
      */
-    public DescribeResult describe(String path) throws ResolutionException {
-        CatalogNode node = catalog.get(path);
-        if (node == null) {
-            throw new ResolutionException("Node not found: " + path, 404);
-        }
+    public DescribeResult describe(String path, CallerIdentity caller) throws ResolutionException {
+        long startTime = System.currentTimeMillis();
+        UsageEvent.UsageEventBuilder eventBuilder = telemetry.createEventBuilder(
+            Operation.DESCRIBE,
+            path,
+            caller
+        ).path(path);
+
+        try {
+            CatalogNode node = catalog.get(path);
+            if (node == null) {
+                emitTelemetry(eventBuilder, startTime, 404, EventOutcome.NOT_FOUND, null, null);
+                throw new ResolutionException("Node not found: " + path, 404);
+            }
 
         DescribeResult result = new DescribeResult(path);
         result.setDisplayName(node.getDisplayName());
@@ -144,20 +184,50 @@ public class MonikerService {
             result.setOwnership(ownershipMap);
         }
 
-        return result;
+            emitTelemetry(eventBuilder, startTime, 200, EventOutcome.SUCCESS, null, null);
+            return result;
+
+        } catch (ResolutionException e) {
+            throw e;
+        } catch (Exception e) {
+            emitTelemetry(eventBuilder, startTime, 500, EventOutcome.ERROR, "InternalError", e.getMessage());
+            throw e;
+        }
     }
 
     /**
      * List children of a path.
      */
-    public List<String> listChildren(String path) {
-        return catalog.childrenPaths(path);
+    public List<String> listChildren(String path, CallerIdentity caller) {
+        long startTime = System.currentTimeMillis();
+        UsageEvent.UsageEventBuilder eventBuilder = telemetry.createEventBuilder(
+            Operation.LIST,
+            path,
+            caller
+        ).path(path);
+
+        try {
+            List<String> children = catalog.childrenPaths(path);
+            emitTelemetry(eventBuilder, startTime, 200, EventOutcome.SUCCESS, null, null);
+            return children;
+        } catch (Exception e) {
+            emitTelemetry(eventBuilder, startTime, 500, EventOutcome.ERROR, "InternalError", e.getMessage());
+            throw e;
+        }
     }
 
     /**
      * Get lineage (ancestor chain) for a path.
      */
-    public List<Map<String, Object>> getLineage(String path) {
+    public List<Map<String, Object>> getLineage(String path, CallerIdentity caller) {
+        long startTime = System.currentTimeMillis();
+        UsageEvent.UsageEventBuilder eventBuilder = telemetry.createEventBuilder(
+            Operation.LINEAGE,
+            path,
+            caller
+        ).path(path);
+
+        try {
         List<Map<String, Object>> lineage = new ArrayList<>();
 
         String current = path;
@@ -184,7 +254,13 @@ public class MonikerService {
             }
         }
 
-        return lineage;
+            emitTelemetry(eventBuilder, startTime, 200, EventOutcome.SUCCESS, null, null);
+            return lineage;
+
+        } catch (Exception e) {
+            emitTelemetry(eventBuilder, startTime, 500, EventOutcome.ERROR, "InternalError", e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -226,6 +302,23 @@ public class MonikerService {
     }
 
     // Helper methods
+
+    private void emitTelemetry(UsageEvent.UsageEventBuilder builder, long startTime,
+                               int statusCode, EventOutcome outcome,
+                               String errorType, String errorMessage) {
+        long latencyMs = System.currentTimeMillis() - startTime;
+
+        UsageEvent event = builder
+            .latencyMs(latencyMs)
+            .statusCode(statusCode)
+            .outcome(outcome)
+            .errorType(errorType)
+            .errorMessage(errorMessage)
+            .cacheHit(false)  // TODO: Implement cache tracking
+            .build();
+
+        telemetry.emit(event);
+    }
 
     private String substituteQueryTemplate(String template, Moniker moniker, String path) {
         // Simple template substitution (enhance as needed)

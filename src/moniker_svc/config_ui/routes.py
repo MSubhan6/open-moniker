@@ -16,7 +16,7 @@ from ..catalog.registry import CatalogRegistry
 from ..catalog.serializer import CatalogSerializer
 from ..catalog.types import (
     AccessPolicy, CatalogNode, ColumnSchema, DataQuality, DataSchema,
-    Documentation, Freshness, Ownership, SLA, SourceBinding, SourceType,
+    Documentation, Ownership, SLA, SourceBinding, SourceType,
 )
 from .models import (
     CatalogNodeModel,
