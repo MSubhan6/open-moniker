@@ -320,6 +320,10 @@ class CatalogNode:
     # Data classification (for governance)
     classification: str = "internal"
 
+    # Data assurance tier (1=bronze, 2=silver, 3=gold by default, configurable labels)
+    # Numeric value maps to configurable labels in config.yaml
+    data_assurance_tier: int | None = None
+
     # Arbitrary tags for searchability
     tags: frozenset[str] = field(default_factory=frozenset)
 

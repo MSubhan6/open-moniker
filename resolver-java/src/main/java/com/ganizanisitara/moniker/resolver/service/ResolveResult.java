@@ -36,6 +36,9 @@ public class ResolveResult {
     private boolean deprecated;
     private int estimatedRows;
     private List<String> children;  // populated for parent nodes
+    // Data assurance tier (1=bronze, 2=silver, 3=gold - configurable labels)
+    private Integer dataAssuranceTier;
+    private String dataAssuranceLabel;
 
     public ResolveResult(String moniker, String path) {
         this.moniker = moniker;

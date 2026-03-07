@@ -10,13 +10,14 @@ import (
 
 // Config represents the service configuration
 type Config struct {
-	ProjectName string          `yaml:"project_name"`
-	Server      ServerConfig    `yaml:"server"`
-	Telemetry   TelemetryConfig `yaml:"telemetry"`
-	Cache       CacheConfig     `yaml:"cache"`
-	Catalog     CatalogConfig   `yaml:"catalog"`
-	Auth        AuthConfig      `yaml:"auth"`
-	ConfigUI    ConfigUIConfig  `yaml:"config_ui"`
+	ProjectName    string                `yaml:"project_name"`
+	Server         ServerConfig          `yaml:"server"`
+	Telemetry      TelemetryConfig       `yaml:"telemetry"`
+	Cache          CacheConfig           `yaml:"cache"`
+	Catalog        CatalogConfig         `yaml:"catalog"`
+	Auth           AuthConfig            `yaml:"auth"`
+	ConfigUI       ConfigUIConfig        `yaml:"config_ui"`
+	AssuranceTiers AssuranceTiersConfig  `yaml:"assurance_tiers"`
 }
 
 // ServerConfig represents server configuration
@@ -60,6 +61,21 @@ type ConfigUIConfig struct {
 	Enabled        bool   `yaml:"enabled"`
 	YAMLOutputPath string `yaml:"yaml_output_path"`
 	ShowFilePaths  bool   `yaml:"show_file_paths"`
+}
+
+// AssuranceTiersConfig represents data assurance tier configuration
+type AssuranceTiersConfig struct {
+	Enabled     bool           `yaml:"enabled"`
+	DefaultTier int            `yaml:"default_tier"`
+	Labels      map[int]string `yaml:"labels"`
+}
+
+// GetLabel returns the label for a tier
+func (a *AssuranceTiersConfig) GetLabel(tier int) string {
+	if !a.Enabled {
+		return ""
+	}
+	return a.Labels[tier]
 }
 
 // Load loads configuration from a YAML file

@@ -422,11 +422,6 @@ async def root(request: Request):
         <h3 class="section-title">Administration</h3>
         <div class="grid">
             <div class="card">
-                <h2>Dashboard</h2>
-                <p>View catalog statistics, request queue, and live telemetry from resolver instances.</p>
-                <a href="/dashboard">Open Dashboard</a>
-            </div>
-            <div class="card">
                 <h2>Domain Configuration</h2>
                 <p>Manage data domains with governance metadata: ownership, confidentiality, PII flags.</p>
                 <a href="/domains/ui">Configure Domains</a>
@@ -451,6 +446,11 @@ async def root(request: Request):
                 <p>Review and approve moniker requests. Manage the governance approval workflow.</p>
                 <a href="/requests/ui">Open Review Queue</a>
                 <a href="/docs" style="margin-left:12px">Swagger</a>
+            </div>
+            <div class="card">
+                <h2>Telemetry</h2>
+                <p>View catalog statistics, request queue, and live telemetry from resolver instances.</p>
+                <a href="/dashboard">Open Telemetry</a>
             </div>
         </div>
 

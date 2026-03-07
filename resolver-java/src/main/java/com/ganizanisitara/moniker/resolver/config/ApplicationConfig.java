@@ -14,4 +14,5 @@ public class ApplicationConfig {
     private CatalogConfig catalog = new CatalogConfig();
     private AuthConfig auth = new AuthConfig();
     private ConfigUIConfig configUi = new ConfigUIConfig();
+    private AssuranceTiersConfig assuranceTiers = new AssuranceTiersConfig();
 }

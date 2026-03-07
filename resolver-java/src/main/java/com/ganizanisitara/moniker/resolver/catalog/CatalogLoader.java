@@ -113,6 +113,24 @@ public class CatalogLoader {
                 node.setTags((List<String>) nodeData.get("tags"));
             }
 
+            // Parse and validate data assurance tier
+            if (nodeData.containsKey("data_assurance_tier")) {
+                Object tierObj = nodeData.get("data_assurance_tier");
+                if (tierObj instanceof Integer) {
+                    int tier = (Integer) tierObj;
+                    if (tier < 1 || tier > 3) {
+                        throw new IllegalArgumentException(
+                            "data_assurance_tier must be 1, 2, or 3 for node '" + path + "', got: " + tier
+                        );
+                    }
+                    node.setDataAssuranceTier(tier);
+                } else {
+                    throw new IllegalArgumentException(
+                        "data_assurance_tier must be an integer for node '" + path + "'"
+                    );
+                }
+            }
+
             // Metadata fields
             node.setCreatedAt((String) nodeData.get("created_at"));
             node.setUpdatedAt((String) nodeData.get("updated_at"));

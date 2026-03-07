@@ -1,6 +1,7 @@
 benchmarks:
   display_name: Benchmarks
   description: Benchmark indices, constituents, and returns
+  data_assurance_tier: 2  # silver - validated and governed
   ownership:
     accountable_owner: indices-governance@firm.com
     data_specialist: quant-research@firm.com
@@ -12,6 +13,7 @@ benchmarks:
 benchmarks.constituents:
   display_name: Benchmark Constituents
   description: Index membership and weights
+  data_assurance_tier: 3  # gold - certified and production-ready
   source_binding:
     type: snowflake
     config:
@@ -102,6 +104,7 @@ benchmarks.sovereign/developed:
 commodities:
   display_name: Commodities
   description: Commodity futures, spot prices, and derivatives
+  data_assurance_tier: 1  # bronze - raw data, minimal validation
   ownership:
     accountable_owner: commodities-desk@firm.com
     data_specialist: commodities-quant@firm.com
@@ -112,6 +115,7 @@ commodities:
 commodities.crypto:
   display_name: Digital Assets
   description: Cryptocurrency spot and derivatives
+  data_assurance_tier: 1  # bronze - experimental data source
   ownership:
     data_specialist: digital-assets@firm.com
   source_binding:
@@ -463,6 +467,7 @@ portfolios.performance:
 prices:
   display_name: Prices
   description: Real-time and historical security prices
+  data_assurance_tier: 3  # gold - mission critical, highly reliable
   ownership:
     accountable_owner: market-data-governance@firm.com
     data_specialist: market-data-ops@firm.com

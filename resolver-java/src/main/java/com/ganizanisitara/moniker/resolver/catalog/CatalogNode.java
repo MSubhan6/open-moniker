@@ -46,6 +46,9 @@ public class CatalogNode {
     // Data classification
     private String classification = "";
 
+    // Data assurance tier (1=bronze, 2=silver, 3=gold - configurable labels)
+    private Integer dataAssuranceTier;
+
     // Tags for searchability
     private List<String> tags = new ArrayList<>();
 

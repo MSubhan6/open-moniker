@@ -65,6 +65,8 @@ func (s *MonikerService) Resolve(ctx context.Context, monikerStr string, caller 
 		if len(children) > 0 {
 			// This is a parent node - return children list
 			ownership := s.catalog.ResolveOwnership(path)
+			parentNode := s.catalog.Get(path)
+
 			result = &ResolveResult{
 				Moniker:   monikerStr,
 				Path:      path,
@@ -73,6 +75,18 @@ func (s *MonikerService) Resolve(ctx context.Context, monikerStr string, caller 
 				Ownership: ownership,
 				Children:  children,
 			}
+
+			// Resolve data assurance tier and label for parent node
+			if parentNode != nil && parentNode.DataAssuranceTier != nil {
+				result.DataAssuranceTier = parentNode.DataAssuranceTier
+				if s.config.AssuranceTiers.Enabled {
+					label := s.config.AssuranceTiers.GetLabel(*parentNode.DataAssuranceTier)
+					if label != "" {
+						result.DataAssuranceLabel = &label
+					}
+				}
+			}
+
 			return result, nil
 		}
 
@@ -173,7 +187,7 @@ func (s *MonikerService) buildResolveResult(m *moniker.Moniker, path string, bin
 		}
 	}
 
-	return &ResolveResult{
+	result = &ResolveResult{
 		Moniker:     m.String(),
 		Path:        path,
 		Type:        "leaf", // This is a leaf node with source binding
@@ -183,6 +197,19 @@ func (s *MonikerService) buildResolveResult(m *moniker.Moniker, path string, bin
 		BindingPath: bindingPath,
 		SubPath:     subPath,
 	}
+
+	// Resolve data assurance tier and label
+	if node != nil && node.DataAssuranceTier != nil {
+		result.DataAssuranceTier = node.DataAssuranceTier
+		if s.config.AssuranceTiers.Enabled {
+			label := s.config.AssuranceTiers.GetLabel(*node.DataAssuranceTier)
+			if label != "" {
+				result.DataAssuranceLabel = &label
+			}
+		}
+	}
+
+	return result
 }
 
 // formatQuery performs basic placeholder substitution

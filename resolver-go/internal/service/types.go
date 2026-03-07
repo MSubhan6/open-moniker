@@ -16,26 +16,30 @@ type ResolvedSource struct {
 
 // ResolveResult represents the full resolution result
 type ResolveResult struct {
-	Moniker        string                       `json:"moniker"`
-	Path           string                       `json:"path"`
-	Type           string                       `json:"type"` // "leaf" or "parent"
-	Source         *ResolvedSource              `json:"source,omitempty"` // nil for parent nodes
-	Ownership      *catalog.ResolvedOwnership   `json:"ownership"`
-	Node           *catalog.CatalogNode         `json:"node,omitempty"`
-	BindingPath    string                       `json:"binding_path,omitempty"`
-	SubPath        *string                      `json:"sub_path,omitempty"`
-	RedirectedFrom *string                      `json:"redirected_from,omitempty"`
-	Children       []string                     `json:"children,omitempty"` // populated for parent nodes
+	Moniker            string                       `json:"moniker"`
+	Path               string                       `json:"path"`
+	Type               string                       `json:"type"` // "leaf" or "parent"
+	Source             *ResolvedSource              `json:"source,omitempty"` // nil for parent nodes
+	Ownership          *catalog.ResolvedOwnership   `json:"ownership"`
+	Node               *catalog.CatalogNode         `json:"node,omitempty"`
+	BindingPath        string                       `json:"binding_path,omitempty"`
+	SubPath            *string                      `json:"sub_path,omitempty"`
+	RedirectedFrom     *string                      `json:"redirected_from,omitempty"`
+	Children           []string                     `json:"children,omitempty"` // populated for parent nodes
+	DataAssuranceTier  *int                         `json:"data_assurance_tier,omitempty"`
+	DataAssuranceLabel *string                      `json:"data_assurance_label,omitempty"`
 }
 
 // DescribeResult represents metadata about a path
 type DescribeResult struct {
-	Node             *catalog.CatalogNode       `json:"node,omitempty"`
-	Ownership        *catalog.ResolvedOwnership `json:"ownership"`
-	Moniker          string                     `json:"moniker"`
-	Path             string                     `json:"path"`
-	HasSourceBinding bool                       `json:"has_source_binding"`
-	SourceType       *string                    `json:"source_type,omitempty"`
+	Node               *catalog.CatalogNode       `json:"node,omitempty"`
+	Ownership          *catalog.ResolvedOwnership `json:"ownership"`
+	Moniker            string                     `json:"moniker"`
+	Path               string                     `json:"path"`
+	HasSourceBinding   bool                       `json:"has_source_binding"`
+	SourceType         *string                    `json:"source_type,omitempty"`
+	DataAssuranceTier  *int                       `json:"data_assurance_tier,omitempty"`
+	DataAssuranceLabel *string                    `json:"data_assurance_label,omitempty"`
 }
 
 // ListResult represents children of a path

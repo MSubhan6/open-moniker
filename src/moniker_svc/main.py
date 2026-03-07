@@ -93,6 +93,9 @@ class ResolveResponse(BaseModel):
     migration_guide_url: str | None = None  # URL to migration docs
     redirected_from: str | None = None   # Original path if redirected via successor
     cache_ttl_hint: int = 300            # Suggested client cache TTL in seconds
+    # Data assurance tier (1=bronze, 2=silver, 3=gold - configurable labels)
+    data_assurance_tier: int | None = None
+    data_assurance_label: str | None = None
 
 
 class ListResponse(BaseModel):
@@ -133,6 +136,10 @@ class DescribeResponse(BaseModel):
 
     # Business models that appear in this moniker
     models: list[ModelSummary] | None = None
+
+    # Data assurance tier (1=bronze, 2=silver, 3=gold - configurable labels)
+    data_assurance_tier: int | None = None
+    data_assurance_label: str | None = None
 
 
 class LineageResponse(BaseModel):
@@ -1228,6 +1235,16 @@ async def resolve_moniker(
     is_parent = result.source is None and result.children is not None
     node_type = "parent" if is_parent else "leaf"
 
+    # Resolve data assurance tier and label
+    data_assurance_tier = None
+    data_assurance_label = None
+    if node and hasattr(node, 'data_assurance_tier') and node.data_assurance_tier is not None:
+        data_assurance_tier = node.data_assurance_tier
+        # Get configured labels from config
+        assurance_config = _config.assurance_tiers if _config else None
+        if assurance_config and assurance_config.enabled:
+            data_assurance_label = assurance_config.labels.get(data_assurance_tier)
+
     response = ResolveResponse(
         moniker=result.moniker,
         path=result.path,
@@ -1268,6 +1285,8 @@ async def resolve_moniker(
         sunset_deadline=sunset_deadline,
         migration_guide_url=migration_guide_url,
         redirected_from=result.redirected_from,
+        data_assurance_tier=data_assurance_tier,
+        data_assurance_label=data_assurance_label,
     )
 
     # Add deprecation/redirect headers
@@ -1405,6 +1424,16 @@ async def describe_moniker(
                 for m in linked_models
             ]
 
+    # Resolve data assurance tier and label
+    data_assurance_tier = None
+    data_assurance_label = None
+    if result.node and hasattr(result.node, 'data_assurance_tier') and result.node.data_assurance_tier is not None:
+        data_assurance_tier = result.node.data_assurance_tier
+        # Get configured labels from config
+        assurance_config = _config.assurance_tiers if _config else None
+        if assurance_config and assurance_config.enabled:
+            data_assurance_label = assurance_config.labels.get(data_assurance_tier)
+
     return DescribeResponse(
         path=result.path,
         display_name=result.node.display_name if result.node else None,
@@ -1439,6 +1468,8 @@ async def describe_moniker(
         schema=schema,
         documentation=documentation,
         models=models_list,
+        data_assurance_tier=data_assurance_tier,
+        data_assurance_label=data_assurance_label,
     )
 
 

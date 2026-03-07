@@ -1,6 +1,7 @@
 package com.ganizanisitara.moniker.resolver.service;
 
 import com.ganizanisitara.moniker.resolver.catalog.*;
+import com.ganizanisitara.moniker.resolver.config.ApplicationConfig;
 import com.ganizanisitara.moniker.resolver.moniker.Moniker;
 import com.ganizanisitara.moniker.resolver.moniker.MonikerParser;
 import com.ganizanisitara.moniker.resolver.moniker.MonikerParseException;
@@ -18,10 +19,12 @@ public class MonikerService {
 
     private final CatalogRegistry catalog;
     private final TelemetryHelper telemetry;
+    private final ApplicationConfig config;
 
-    public MonikerService(CatalogRegistry catalog, TelemetryHelper telemetry) {
+    public MonikerService(CatalogRegistry catalog, TelemetryHelper telemetry, ApplicationConfig config) {
         this.catalog = catalog;
         this.telemetry = telemetry;
+        this.config = config;
     }
 
     /**
@@ -59,6 +62,7 @@ public class MonikerService {
                 if (!children.isEmpty()) {
                     // This is a parent node - return children list
                     ResolvedOwnership ownership = catalog.resolveOwnership(path);
+                    CatalogNode parentNode = catalog.get(path);
 
                     ResolveResult result = new ResolveResult(monikerStr, path);
                     result.setType("parent");
@@ -67,6 +71,15 @@ public class MonikerService {
                     result.setOwnership(ownership);
                     result.setChildren(new ArrayList<>(children));
                     result.setWarnings(new ArrayList<>());
+
+                    // Resolve data assurance tier and label for parent node
+                    if (parentNode != null && parentNode.getDataAssuranceTier() != null) {
+                        result.setDataAssuranceTier(parentNode.getDataAssuranceTier());
+                        if (config.getAssuranceTiers().isEnabled()) {
+                            String label = config.getAssuranceTiers().getLabel(parentNode.getDataAssuranceTier());
+                            result.setDataAssuranceLabel(label);
+                        }
+                    }
 
                     // Emit success telemetry for parent node
                     emitTelemetry(eventBuilder, startTime, 200, EventOutcome.SUCCESS, null, null);
@@ -146,6 +159,15 @@ public class MonikerService {
             result.setDeprecated(true);
             result.setDeprecationMessage(node.getDeprecationMessage());
             result.setSuccessor(node.getSuccessor());
+        }
+
+        // Resolve data assurance tier and label
+        if (node.getDataAssuranceTier() != null) {
+            result.setDataAssuranceTier(node.getDataAssuranceTier());
+            if (config.getAssuranceTiers().isEnabled()) {
+                String label = config.getAssuranceTiers().getLabel(node.getDataAssuranceTier());
+                result.setDataAssuranceLabel(label);
+            }
         }
 
         // Emit success telemetry

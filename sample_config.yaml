@@ -90,3 +90,14 @@ config_ui:
   enabled: true
   yaml_output_path: "catalog_output.yaml"
   show_file_paths: false  # Show file paths in save success messages (useful for debugging)
+
+# Data Assurance Tiers
+# Configurable labels for data quality tiers (1, 2, 3)
+# Different organizations can use their own terminology
+assurance_tiers:
+  enabled: true
+  default_tier: 1
+  labels:
+    1: bronze    # Or: cataloged, identified, raw
+    2: silver    # Or: governed, validated, refined
+    3: gold      # Or: certified, attested, production

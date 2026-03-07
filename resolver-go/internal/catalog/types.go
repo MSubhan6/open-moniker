@@ -373,6 +373,9 @@ type CatalogNode struct {
 	// Data classification
 	Classification string `json:"classification" yaml:"classification"`
 
+	// Data assurance tier (1=bronze, 2=silver, 3=gold - configurable labels)
+	DataAssuranceTier *int `json:"data_assurance_tier,omitempty" yaml:"data_assurance_tier,omitempty"`
+
 	// Tags for searchability
 	Tags []string `json:"tags,omitempty" yaml:"tags,omitempty"`
 

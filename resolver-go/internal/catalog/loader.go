@@ -13,17 +13,18 @@ type CatalogYAML map[string]*CatalogNodeYAML
 
 // CatalogNodeYAML represents a node in the YAML file
 type CatalogNodeYAML struct {
-	DisplayName    string                 `yaml:"display_name"`
-	Description    string                 `yaml:"description"`
-	Domain         *string                `yaml:"domain"`
-	Ownership      *OwnershipYAML         `yaml:"ownership"`
-	SourceBinding  *SourceBindingYAML     `yaml:"source_binding"`
-	AccessPolicy   *AccessPolicyYAML      `yaml:"access_policy"`
-	Classification string                 `yaml:"classification"`
-	Tags           []string               `yaml:"tags"`
-	Status         string                 `yaml:"status"`
-	IsLeaf         bool                   `yaml:"is_leaf"`
-	Successor      *string                `yaml:"successor"`
+	DisplayName       string             `yaml:"display_name"`
+	Description       string             `yaml:"description"`
+	Domain            *string            `yaml:"domain"`
+	Ownership         *OwnershipYAML     `yaml:"ownership"`
+	SourceBinding     *SourceBindingYAML `yaml:"source_binding"`
+	AccessPolicy      *AccessPolicyYAML  `yaml:"access_policy"`
+	Classification    string             `yaml:"classification"`
+	DataAssuranceTier *int               `yaml:"data_assurance_tier"`
+	Tags              []string           `yaml:"tags"`
+	Status            string             `yaml:"status"`
+	IsLeaf            bool               `yaml:"is_leaf"`
+	Successor         *string            `yaml:"successor"`
 }
 
 // OwnershipYAML represents ownership in YAML
@@ -86,19 +87,30 @@ func LoadCatalog(path string) ([]*CatalogNode, error) {
 
 func convertYAMLToNode(path string, yaml *CatalogNodeYAML) *CatalogNode {
 	node := &CatalogNode{
-		Path:           path,
-		DisplayName:    yaml.DisplayName,
-		Description:    yaml.Description,
-		Domain:         yaml.Domain,
-		Classification: yaml.Classification,
-		Tags:           yaml.Tags,
-		IsLeaf:         yaml.IsLeaf,
-		Successor:      yaml.Successor,
+		Path:              path,
+		DisplayName:       yaml.DisplayName,
+		Description:       yaml.Description,
+		Domain:            yaml.Domain,
+		Classification:    yaml.Classification,
+		DataAssuranceTier: yaml.DataAssuranceTier,
+		Tags:              yaml.Tags,
+		IsLeaf:            yaml.IsLeaf,
+		Successor:         yaml.Successor,
 	}
 
 	// Set default classification
 	if node.Classification == "" {
 		node.Classification = "internal"
+	}
+
+	// Validate data assurance tier
+	if node.DataAssuranceTier != nil {
+		tier := *node.DataAssuranceTier
+		if tier < 1 || tier > 3 {
+			// Log warning but don't fail - be lenient in Go implementation
+			fmt.Printf("Warning: data_assurance_tier must be 1, 2, or 3 for node '%s', got: %d\n", path, tier)
+			node.DataAssuranceTier = nil // Ignore invalid tier
+		}
 	}
 
 	// Parse status

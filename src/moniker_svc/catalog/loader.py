@@ -222,6 +222,14 @@ class CatalogLoader:
             except ValueError:
                 logger.warning(f"Unknown status '{data['status']}' for {path}, defaulting to active")
 
+        # Parse and validate data assurance tier
+        data_assurance_tier = data.get("data_assurance_tier")
+        if data_assurance_tier is not None:
+            if not isinstance(data_assurance_tier, int) or data_assurance_tier not in (1, 2, 3):
+                raise ValueError(
+                    f"data_assurance_tier must be 1, 2, or 3 for node '{path}', got: {data_assurance_tier}"
+                )
+
         return CatalogNode(
             path=path,
             display_name=data.get("display_name", ""),
@@ -235,6 +243,7 @@ class CatalogLoader:
             access_policy=access_policy,
             documentation=documentation,
             classification=data.get("classification", "internal"),
+            data_assurance_tier=data_assurance_tier,
             tags=tags,
             metadata=data.get("metadata", {}),
             status=status,

@@ -104,6 +104,18 @@ class RequestsConfig:
 
 
 @dataclass
+class AssuranceTiersConfig:
+    """Configurable labels for data assurance tiers."""
+    enabled: bool = True
+    labels: dict[int, str] = field(default_factory=lambda: {
+        1: "bronze",
+        2: "silver",
+        3: "gold"
+    })
+    default_tier: int = 1
+
+
+@dataclass
 class GovernanceConfig:
     """Enterprise governance configuration."""
     rate_limiter_enabled: bool = True
@@ -130,6 +142,7 @@ class Config:
     models: ModelsConfig = field(default_factory=ModelsConfig)
     requests: RequestsConfig = field(default_factory=RequestsConfig)
     governance: GovernanceConfig = field(default_factory=GovernanceConfig)
+    assurance_tiers: AssuranceTiersConfig = field(default_factory=AssuranceTiersConfig)
 
     @classmethod
     def from_dict(cls, data: dict) -> Config:
@@ -148,6 +161,7 @@ class Config:
             models=ModelsConfig(**data.get("models", {})),
             requests=RequestsConfig(**data.get("requests", {})),
             governance=GovernanceConfig(**data.get("governance", {})),
+            assurance_tiers=AssuranceTiersConfig(**data.get("assurance_tiers", {})),
         )
 
     @classmethod
